@@ -1,6 +1,17 @@
-# 🛒 Merchandising Co-Pilot
+> **Your AI-Powered Smart Assistant for E-Commerce Stores** 🚀
+> 
+> Boost sales, save time, and grow your online store with automated recommendations for smart pricing, compelling product descriptions, and profit-boosting product bundles!
 
-AI-powered merchandising co-pilot — built with **FastAPI**, **React (Vite)**, and **PostgreSQL**.
+---
+
+## 🌟 What is Merchandising Co-Pilot?
+
+Running an online store involves hundreds of tiny decisions every day. **Merchandising Co-Pilot** acts like your personal 24/7 retail strategist. It analyzes store data and market trends to automatically generate actionable business proposals:
+
+- 💰 **Smart Price Adjustments:** Recommends optimal product pricing based on market trends to increase sales while preserving high profit margins.
+- ✍️ **AI Copy Rewriting:** Transforms plain product descriptions into persuasive, customer-focused copy that boosts conversion rates.
+- 📦 **Product Bundling:** Identifies products frequently bought together and suggests discounted bundles to raise your Average Order Value (AOV).
+- ⚡ **One-Click Actions:** Review data-backed proposals in a clean interactive dashboard and approve or reject them instantly!
 
 ---
 
