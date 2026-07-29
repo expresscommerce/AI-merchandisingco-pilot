@@ -1,0 +1,1 @@
+# merchandising-copilot app package
