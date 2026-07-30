@@ -59,7 +59,7 @@ When you click **Approve**, the app instantly updates your actual Shopify store 
 - Switch to the **Results** tab to track the live impact of your approved proposals.
 - **Changed your mind?** Click the **Rollback** button on any approved card to instantly restore your store's original price or description!
 
-*(You can attach your Results Tab screenshot here!)*
+![Step 5 - Results Tab & Performance Tracking](docs/screenshots/6-results-tab.png)
 
 ---
 
