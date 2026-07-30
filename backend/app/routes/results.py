@@ -1,16 +1,21 @@
 """
-Results routes — approved proposals with tracked outcomes.
+Results routes — approved proposals with tracked outcomes per store.
 """
+
+from __future__ import annotations
 
 from fastapi import APIRouter
 
 from app.models.result import ProposalResult
+from app.services.shopify_auth import sanitize_shop_domain
 
 router = APIRouter(prefix="/results", tags=["results"])
 
-# ── Seed data — realistic tracked outcomes ──────────────────────────────
+# Live store results registry: { clean_shop_domain: list[ProposalResult] }
+_STORE_RESULTS: dict[str, list[ProposalResult]] = {}
 
-_RESULTS: list[ProposalResult] = [
+# Seed data for demo mode only
+_SEED_RESULTS: list[ProposalResult] = [
     ProposalResult(
         id="11111111-1111-1111-1111-111111111111",
         type="price_change",
@@ -41,30 +46,26 @@ _RESULTS: list[ProposalResult] = [
         tracking_status="measured",
         outcome="AOV increased from $34.20 → $48.70 on bundle orders",
     ),
-    ProposalResult(
-        id="44444444-4444-4444-4444-444444444444",
-        type="price_change",
-        product_name="Silicone Baking Mat (2-pack)",
-        change_summary="Price reduced from $22.99 → $19.99",
-        approved_at="Jul 28, 2026",
-        days_since_approval=1,
-        tracking_status="tracking",
-        outcome=None,
-    ),
-    ProposalResult(
-        id="55555555-5555-5555-5555-555555555555",
-        type="copy_rewrite",
-        product_name="Recycled Glass Tumbler Set",
-        change_summary="Description rewritten to emphasize sustainability story",
-        approved_at="Jul 29, 2026",
-        days_since_approval=0,
-        tracking_status="tracking",
-        outcome=None,
-    ),
 ]
 
 
+def add_store_result(store_url: str, result: ProposalResult) -> None:
+    """Register an approved proposal result for a specific store."""
+    clean_domain = sanitize_shop_domain(store_url or "demo")
+    if clean_domain not in _STORE_RESULTS:
+        _STORE_RESULTS[clean_domain] = []
+
+    # Avoid duplicate additions
+    existing_ids = {r.id for r in _STORE_RESULTS[clean_domain]}
+    if result.id not in existing_ids:
+        _STORE_RESULTS[clean_domain].insert(0, result)
+
+
 @router.get("/", response_model=list[ProposalResult], summary="List tracked results")
-async def list_results():
-    """Return approved proposals with their tracked outcomes."""
-    return _RESULTS
+async def list_results(store_url: str | None = None):
+    """Return approved proposals for a specific store, or seed defaults in demo mode."""
+    if store_url:
+        clean_domain = sanitize_shop_domain(store_url)
+        return _STORE_RESULTS.get(clean_domain, [])
+
+    return _SEED_RESULTS

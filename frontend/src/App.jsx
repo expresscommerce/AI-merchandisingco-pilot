@@ -49,18 +49,14 @@ function Dashboard({ session, onLogout, initialToast }) {
     setLoadingResults(true);
     setErrorResults(null);
     try {
-      const liveResults = await fetchResults();
-      if (liveResults && liveResults.length > 0) {
-        setResults(liveResults);
-      } else {
-        setResults(getResultsForCategory(session?.category));
-      }
+      const liveResults = await fetchResults(session?.storeName);
+      setResults(liveResults || []);
     } catch (err) {
-      setResults(getResultsForCategory(session?.category));
+      setErrorResults(err.message);
     } finally {
       setLoadingResults(false);
     }
-  }, [session?.category]);
+  }, [session?.storeName]);
 
   useEffect(() => {
     loadProposals();

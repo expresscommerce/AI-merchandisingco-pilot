@@ -223,29 +223,25 @@ async def approve_proposal(proposal_id: UUID, shop: str | None = None):
     from app.services.agent import mark_product_as_approved
     mark_product_as_approved(shop or "default", proposal.product_name)
 
-    # Insert newly approved proposal into live results tracker
-    from app.routes.results import _RESULTS, ProposalResult
-    existing_ids = {r.id for r in _RESULTS}
-    if str(proposal.id) not in existing_ids:
-        summary_str = f"Approved change for {proposal.product_name}"
-        if proposal.type == "price_change":
-            summary_str = f"Price updated to ${getattr(proposal, 'proposed_price', 0):.2f}"
-        elif proposal.type == "copy_rewrite":
-            summary_str = "Listing copy updated with AI conversion optimization"
+    # Insert newly approved proposal into live store results tracker
+    from app.routes.results import ProposalResult, add_store_result
+    summary_str = f"Approved change for {proposal.product_name}"
+    if proposal.type == "price_change":
+        summary_str = f"Price updated to ${getattr(proposal, 'proposed_price', 0):.2f}"
+    elif proposal.type == "copy_rewrite":
+        summary_str = "Listing copy updated with AI conversion optimization"
 
-        _RESULTS.insert(
-            0,
-            ProposalResult(
-                id=str(proposal.id),
-                type=proposal.type,
-                product_name=proposal.product_name,
-                change_summary=summary_str,
-                approved_at="Just now",
-                days_since_approval=0,
-                tracking_status="tracking",
-                outcome="Tracking live impact on your store...",
-            ),
-        )
+    res_obj = ProposalResult(
+        id=str(proposal.id),
+        type=proposal.type,
+        product_name=proposal.product_name,
+        change_summary=summary_str,
+        approved_at="Just now",
+        days_since_approval=0,
+        tracking_status="tracking",
+        outcome="Tracking live impact on your store...",
+    )
+    add_store_result(shop or "demo", res_obj)
 
     # If shop parameter provided, attempt live Shopify Admin API execution
     if shop:

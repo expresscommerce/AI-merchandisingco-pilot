@@ -17,8 +17,11 @@ export async function fetchProposals(category, storeUrl) {
   return res.json();
 }
 
-export async function fetchResults() {
-  const res = await fetch(`${API_BASE}/results/`);
+export async function fetchResults(storeUrl) {
+  const url = storeUrl
+    ? `${API_BASE}/results/?store_url=${encodeURIComponent(storeUrl)}`
+    : `${API_BASE}/results/`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch results (${res.status})`);
   return res.json();
 }
