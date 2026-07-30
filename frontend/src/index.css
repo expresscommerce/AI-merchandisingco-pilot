@@ -1660,19 +1660,6 @@ ul { list-style: none; }
 
 /* ── Preview on Product Page Toggle & Mock Storefront ───────────────── */
 
-.card__seasonal-badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #0284c7;
-  background: rgba(14, 165, 233, 0.08);
-  border: 1px solid rgba(14, 165, 233, 0.25);
-  padding: 2px 8px;
-  border-radius: 6px;
-  white-space: nowrap;
-}
-
 .preview-toggle-bar {
   margin-bottom: 10px;
   display: flex;
