@@ -9,6 +9,7 @@ import ResultsTab from './components/ResultsTab';
 import Toast from './components/Toast';
 import {
   fetchProposals,
+  fetchResults,
   approveProposal,
   rejectProposal,
 } from './api/proposals';
