@@ -45,13 +45,18 @@ function Dashboard({ session, onLogout, initialToast }) {
     }
   }, [session?.category, session?.storeName]);
 
-  const loadResults = useCallback(() => {
+  const loadResults = useCallback(async () => {
     setLoadingResults(true);
     setErrorResults(null);
     try {
-      setResults(getResultsForCategory(session?.category));
+      const liveResults = await fetchResults();
+      if (liveResults && liveResults.length > 0) {
+        setResults(liveResults);
+      } else {
+        setResults(getResultsForCategory(session?.category));
+      }
     } catch (err) {
-      setErrorResults(err.message);
+      setResults(getResultsForCategory(session?.category));
     } finally {
       setLoadingResults(false);
     }
@@ -71,6 +76,7 @@ function Dashboard({ session, onLogout, initialToast }) {
     );
     try {
       await approveProposal(id, session?.storeName);
+      await loadResults();
       setTimeout(() => {
         if (proposal) {
           setRecentlyApproved((prev) => [
@@ -86,7 +92,7 @@ function Dashboard({ session, onLogout, initialToast }) {
       );
       setToast('Failed to approve — please try again.');
     }
-  }, [proposals, session?.storeName]);
+  }, [proposals, session?.storeName, loadResults]);
 
   /* ── Optimistic reject ────────────────────────────────────────── */
 

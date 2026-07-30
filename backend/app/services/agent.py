@@ -188,7 +188,9 @@ Do NOT return extra text outside JSON.
             resp = await client.post(DEEPINFRA_URL, headers=headers, json=payload)
 
         if resp is None or resp.status_code != 200:
-            print(f"❌ DeepInfra API error ({resp.status_code if resp else 'No response'}): {resp.text[:200] if resp else ''}")
+            err_code = resp.status_code if resp is not None else 'No response'
+            err_text = resp.text[:200] if resp is not None else ''
+            print(f"❌ DeepInfra API error ({err_code}): {err_text}")
             return None
 
         result_json = resp.json()

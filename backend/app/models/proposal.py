@@ -31,7 +31,6 @@ class ProposalBase(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     product_id: str | None = None
     variant_id: str | None = None
-    type: ProposalType
     product_name: str
     reasoning: str
     confidence: Confidence

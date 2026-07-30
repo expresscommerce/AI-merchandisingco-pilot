@@ -4,7 +4,7 @@ Product service — business logic for product operations.
 Uses an in-memory store for now; swap with a real DB repository later.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from app.models.product import ProductCreate, ProductResponse, ProductUpdate
@@ -27,7 +27,7 @@ class ProductService:
     # ── Commands ─────────────────────────────────────────────────────────
 
     def create(self, payload: ProductCreate) -> ProductResponse:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         product = ProductResponse(
             id=uuid4(),
             **payload.model_dump(),
@@ -43,7 +43,7 @@ class ProductService:
             return None
         updated_data = existing.model_dump()
         updated_data.update(payload.model_dump(exclude_unset=True))
-        updated_data["updated_at"] = datetime.utcnow()
+        updated_data["updated_at"] = datetime.now(timezone.utc)
         updated = ProductResponse(**updated_data)
         self._store[product_id] = updated
         return updated
