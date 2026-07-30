@@ -126,15 +126,120 @@ function DataTrail({ steps }) {
   );
 }
 
+/** Mocked Shopify Product Page preview (with tab switcher to compare Current vs Proposed). */
+function StorefrontProductPreview({ type, title, symbol, currentPrice, proposedPrice, currentCopy, proposedCopy, products, discountPercent, imageUrl }) {
+  const [activeView, setActiveView] = useState('proposed'); // 'current' | 'proposed'
+
+  const isPrice = type === 'price_change';
+  const isCopy = type === 'copy_rewrite';
+  const isBundle = type === 'bundle_suggestion';
+
+  const oldPriceStr = currentPrice ? `${symbol}${currentPrice}` : `${symbol}29.99`;
+  const newPriceStr = proposedPrice ? `${symbol}${proposedPrice}` : oldPriceStr;
+  const handleSlug = title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : 'product-page';
+
+  return (
+    <div className="storefront-preview-wrapper">
+      {/* Tab Switcher without Emojis */}
+      <div className="storefront-tabs">
+        <button
+          type="button"
+          className={`storefront-tab ${activeView === 'current' ? 'storefront-tab--active' : ''}`}
+          onClick={() => setActiveView('current')}
+        >
+          <span>Current Storefront</span>
+        </button>
+        <button
+          type="button"
+          className={`storefront-tab ${activeView === 'proposed' ? 'storefront-tab--active storefront-tab--proposed' : ''}`}
+          onClick={() => setActiveView('proposed')}
+        >
+          <span>Proposed AI Storefront</span>
+        </button>
+      </div>
+
+      {/* Mini Shopify Browser Window Mockup */}
+      <div className={`storefront-card ${activeView === 'proposed' ? 'storefront-card--proposed' : 'storefront-card--current'}`}>
+        <div className="storefront-browser-bar">
+          <span className="browser-dot browser-dot--red"></span>
+          <span className="browser-dot browser-dot--yellow"></span>
+          <span className="browser-dot browser-dot--green"></span>
+          <span className="browser-address">myshopify.com/products/{handleSlug}</span>
+        </div>
+
+        <div className="storefront-card__header-bar">
+          <span className="storefront-card__tag">
+            {activeView === 'current' ? 'Current Live Version' : 'Proposed AI Recommendation'}
+          </span>
+        </div>
+
+        <div className="storefront-card__body">
+          <div className="storefront-card__img">
+            {imageUrl ? (
+              <img src={imageUrl} alt={title} className="product-real-img" />
+            ) : (
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            )}
+          </div>
+
+          <div className="storefront-card__info">
+            <h4 className="storefront-card__title">{title}</h4>
+            
+            {/* Price display */}
+            <div className="storefront-card__price">
+              {isPrice ? (
+                activeView === 'current' ? (
+                  <span className="price-tag">{oldPriceStr}</span>
+                ) : (
+                  <span className="price-tag price-tag--new">{newPriceStr} <s className="price-tag--old">{oldPriceStr}</s></span>
+                )
+              ) : (
+                <span className="price-tag">{oldPriceStr}</span>
+              )}
+            </div>
+
+            {/* Bundle details if bundle proposal */}
+            {isBundle && activeView === 'proposed' && (
+              <div className="storefront-bundle-badge">
+                Bundle Offer: Save {discountPercent}% when bought together
+              </div>
+            )}
+
+            <button type="button" className={`storefront-card__btn ${activeView === 'proposed' ? 'storefront-card__btn--active' : ''}`} disabled>
+              {isBundle && activeView === 'proposed' ? `Add ${products?.length || 3}-Item Bundle to Cart` : 'Add to Cart'}
+            </button>
+
+            {/* Description */}
+            <p className="storefront-card__desc">
+              {isCopy ? (
+                activeView === 'current' ? currentCopy : proposedCopy
+              ) : isBundle && activeView === 'proposed' ? (
+                `Includes: ${products?.join(', ')}.`
+              ) : (
+                currentCopy || 'High quality product designed for durability and daily performance.'
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main Card ────────────────────────────────────────────────────────── */
 
 export default function ProposalCard({ proposal, onApprove, onReject, onRollback }) {
   const [expanded, setExpanded] = useState(false);
   const [acting, setActing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const {
-    id, type, product_name, reasoning, confidence,
+    id, type, product_name, image_url, reasoning, confidence,
     estimated_impact, status, data_trail,
     current_price, proposed_price, sparkline_data,
     current_copy, proposed_copy,
@@ -203,41 +308,73 @@ export default function ProposalCard({ proposal, onApprove, onReject, onRollback
         {confidence.charAt(0).toUpperCase() + confidence.slice(1)}
       </p>
 
-      {/* ── Type-specific sections ──────────────────────────────── */}
-      {type === 'price_change' && (
+      {/* Toggle button available on ALL cards */}
+      <div className="preview-toggle-bar">
+        <button
+          type="button"
+          className={`btn-preview-toggle ${showPreview ? 'btn-preview-toggle--active' : ''}`}
+          onClick={() => setShowPreview(!showPreview)}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ marginRight: '6px' }}>
+            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+          </svg>
+          {showPreview ? 'Hide storefront preview' : 'See how this looks on your store'}
+        </button>
+      </div>
+
+      {showPreview ? (
+        <StorefrontProductPreview
+          type={type}
+          title={product_name}
+          imageUrl={image_url}
+          symbol={symbol}
+          currentPrice={current_price}
+          proposedPrice={proposed_price}
+          currentCopy={current_copy}
+          proposedCopy={proposed_copy}
+          products={products}
+          discountPercent={discount_percent}
+        />
+      ) : (
         <>
-          <div className="card__price-row">
-            <span className="price-old">{symbol}{current_price?.toLocaleString()}</span>
-            <span className="price-arrow" aria-hidden="true">→</span>
-            <span className="price-new">{symbol}{proposed_price?.toLocaleString()}</span>
-          </div>
-          <Sparkline data={sparkline_data} />
+          {/* ── Type-specific sections ──────────────────────────────── */}
+          {type === 'price_change' && (
+            <>
+              <div className="card__price-row">
+                <span className="price-old">{symbol}{current_price?.toLocaleString()}</span>
+                <span className="price-arrow" aria-hidden="true">→</span>
+                <span className="price-new">{symbol}{proposed_price?.toLocaleString()}</span>
+              </div>
+              <Sparkline data={sparkline_data} />
+            </>
+          )}
+
+          {type === 'copy_rewrite' && (
+            <div className="card__copy-diff">
+              <div className="copy-block copy-block--old">
+                <span className="copy-label">Current</span>
+                <p>{current_copy}</p>
+              </div>
+              <div className="copy-block copy-block--new">
+                <span className="copy-label">Proposed</span>
+                <p>{proposed_copy}</p>
+              </div>
+            </div>
+          )}
+
+          {type === 'bundle_suggestion' && (
+            <div className="card__bundle">
+              <ul className="bundle-list">
+                {products?.map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+              <div className="bundle-meta">
+                <span className="bundle-discount">–{discount_percent}% bundle</span>
+                <CoPurchaseVisual pct={co_purchase_pct} productCount={products?.length} />
+              </div>
+            </div>
+          )}
         </>
-      )}
-
-      {type === 'copy_rewrite' && (
-        <div className="card__copy-diff">
-          <div className="copy-block copy-block--old">
-            <span className="copy-label">Current</span>
-            <p>{current_copy}</p>
-          </div>
-          <div className="copy-block copy-block--new">
-            <span className="copy-label">Proposed</span>
-            <p>{proposed_copy}</p>
-          </div>
-        </div>
-      )}
-
-      {type === 'bundle_suggestion' && (
-        <div className="card__bundle">
-          <ul className="bundle-list">
-            {products?.map((p, i) => <li key={i}>{p}</li>)}
-          </ul>
-          <div className="bundle-meta">
-            <span className="bundle-discount">–{discount_percent}% bundle</span>
-            <CoPurchaseVisual pct={co_purchase_pct} productCount={products?.length} />
-          </div>
-        </div>
       )}
 
       {/* Reasoning */}

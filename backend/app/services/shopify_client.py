@@ -44,13 +44,20 @@ async def get_products(store_id_or_domain: str) -> list[dict[str, Any]]:
 
         query = """
         query {
-          products(first: 10) {
+          products(first: 15) {
             edges {
               node {
                 id
                 title
                 description
                 handle
+                images(first: 1) {
+                  edges {
+                    node {
+                      url
+                    }
+                  }
+                }
                 variants(first: 5) {
                   edges {
                     node {
@@ -87,14 +94,20 @@ async def get_products(store_id_or_domain: str) -> list[dict[str, Any]]:
                 products = []
                 for edge in edges:
                     node = (edge or {}).get("node") or {}
+                    img_edges = (node.get("images") or {}).get("edges") or []
+                    image_url = (img_edges[0] or {}).get("node", {}).get("url") if img_edges else None
                     variants = (node.get("variants") or {}).get("edges") or []
                     first_variant = (variants[0] or {}).get("node") if variants else {}
+                    if not isinstance(first_variant, dict):
+                        first_variant = {}
                     products.append({
                         "id": node.get("id"),
                         "product_name": node.get("title"),
                         "current_copy": node.get("description"),
-                        "current_price": float((first_variant or {}).get("price", 0.0) or 0.0),
-                        "variant_id": (first_variant or {}).get("id"),
+                        "current_price": float(first_variant.get("price") or 0.0),
+                        "variant_id": first_variant.get("id"),
+                        "image_url": image_url,
+                        "currency_symbol": "$",
                     })
                 if products:
                     return products
