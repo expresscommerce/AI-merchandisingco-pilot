@@ -212,12 +212,29 @@ function Dashboard({ session, onLogout, initialToast }) {
    ══════════════════════════════════════════════════════════════════════ */
 
 export default function App() {
-  const [session, setSession] = useState(null);     // { storeName, category, isDemo }
+  // Restore session from localStorage on mount
+  const [session, setSession] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mcp_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [onboarding, setOnboarding] = useState('idle'); // idle | oauth | category
   const [tempStore, setTempStore] = useState('');
   const [initialToast, setInitialToast] = useState(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // Persist session to localStorage whenever it changes
+  useEffect(() => {
+    if (session) {
+      localStorage.setItem('mcp_session', JSON.stringify(session));
+    } else {
+      localStorage.removeItem('mcp_session');
+    }
+  }, [session]);
 
   /* ── Check for OAuth redirect params (?connected=true&shop=...) ─── */
 

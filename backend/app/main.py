@@ -11,13 +11,18 @@ from app.config import settings
 from app.routes import auth, health, products, proposals, results
 
 
+from app.services.scheduler import start_scheduler, stop_scheduler
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
     print(f"🚀 Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    start_scheduler()
     yield
     # Shutdown
+    stop_scheduler()
     print("👋 Shutting down …")
 
 
