@@ -1,4 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import LandingPage from './pages/LandingPage';
+import OAuthScreen from './pages/OAuthScreen';
+import CategoryPicker from './pages/CategoryPicker';
 import SummaryBar from './components/SummaryBar';
 import ProposalsTab from './components/ProposalsTab';
 import ResultsTab from './components/ResultsTab';
@@ -12,7 +16,11 @@ import {
 
 const COLLAPSE_MS = 450;
 
-export default function App() {
+/* ══════════════════════════════════════════════════════════════════════
+   DASHBOARD — the authenticated view
+   ══════════════════════════════════════════════════════════════════════ */
+
+function Dashboard({ session, onLogout }) {
   const [tab, setTab] = useState('proposals');
   const [proposals, setProposals] = useState([]);
   const [results, setResults] = useState([]);
@@ -23,14 +31,13 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [recentlyApproved, setRecentlyApproved] = useState([]);
 
-  /* ── Fetch proposals ──────────────────────────────────────────────── */
+  /* ── Fetch ────────────────────────────────────────────────────── */
 
   const loadProposals = useCallback(async () => {
     setLoadingProposals(true);
     setErrorProposals(null);
     try {
-      const data = await fetchProposals();
-      setProposals(data);
+      setProposals(await fetchProposals());
     } catch (err) {
       setErrorProposals(err.message);
     } finally {
@@ -38,14 +45,11 @@ export default function App() {
     }
   }, []);
 
-  /* ── Fetch results ────────────────────────────────────────────────── */
-
   const loadResults = useCallback(async () => {
     setLoadingResults(true);
     setErrorResults(null);
     try {
-      const data = await fetchResults();
-      setResults(data);
+      setResults(await fetchResults());
     } catch (err) {
       setErrorResults(err.message);
     } finally {
@@ -58,19 +62,15 @@ export default function App() {
     loadResults();
   }, [loadProposals, loadResults]);
 
-  /* ── Optimistic approve ─────────────────────────────────────────── */
+  /* ── Optimistic approve ───────────────────────────────────────── */
 
   const handleApprove = useCallback(async (id) => {
     const proposal = proposals.find((p) => p.id === id);
-
-    // Optimistic: mark approved immediately
     setProposals((prev) =>
       prev.map((p) => (p.id === id ? { ...p, status: 'approved' } : p))
     );
-
     try {
       await approveProposal(id);
-      // After success, move to recently approved strip and remove from grid
       setTimeout(() => {
         if (proposal) {
           setRecentlyApproved((prev) => [
@@ -81,7 +81,6 @@ export default function App() {
         setProposals((prev) => prev.filter((p) => p.id !== id));
       }, 600);
     } catch {
-      // Rollback
       setProposals((prev) =>
         prev.map((p) => (p.id === id ? { ...p, status: 'pending' } : p))
       );
@@ -89,13 +88,12 @@ export default function App() {
     }
   }, [proposals]);
 
-  /* ── Optimistic reject ──────────────────────────────────────────── */
+  /* ── Optimistic reject ────────────────────────────────────────── */
 
   const handleReject = useCallback(async (id) => {
     setProposals((prev) =>
       prev.map((p) => (p.id === id ? { ...p, status: 'rejected' } : p))
     );
-
     try {
       await rejectProposal(id);
       setTimeout(() => {
@@ -109,31 +107,36 @@ export default function App() {
     }
   }, []);
 
-  /* ── Derived stats ──────────────────────────────────────────────── */
+  /* ── Stats ────────────────────────────────────────────────────── */
 
   const pending = proposals.filter((p) => p.status === 'pending');
   const highConf = pending.filter((p) => p.confidence === 'high');
-
-  // Parse dollar amounts from estimated_impact strings
   const totalImpact = pending.reduce((sum, p) => {
-    const match = p.estimated_impact.match(/\$[\d,]+/);
-    if (match) {
-      const num = parseFloat(match[0].replace(/[$,]/g, ''));
-      return sum + (isNaN(num) ? 0 : num);
-    }
+    const m = p.estimated_impact.match(/\$[\d,]+/);
+    if (m) return sum + parseFloat(m[0].replace(/[$,]/g, ''));
     return sum;
   }, 0);
 
-  /* ── Render ─────────────────────────────────────────────────────── */
+  /* ── Render ───────────────────────────────────────────────────── */
 
   return (
     <div className="app">
       <header className="app-header">
         <div className="app-header__inner">
-          <h1 className="app-logo">
+          <span className="app-logo">
             <span className="app-logo__icon" aria-hidden="true">◆</span>
             Merchandising Co-Pilot
-          </h1>
+          </span>
+
+          <div className="app-header__right">
+            <span className="app-header__store">
+              <span className="store-dot" aria-hidden="true" />
+              {session.storeName}.myshopify.com
+            </span>
+            <button className="btn-logout" onClick={onLogout}>
+              Log out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -190,5 +193,74 @@ export default function App() {
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
+  );
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   APP ROOT — onboarding flow + routing
+   ══════════════════════════════════════════════════════════════════════ */
+
+export default function App() {
+  // Session state — in-memory only, no localStorage
+  const [session, setSession] = useState(null);     // { storeName, category }
+  const [onboarding, setOnboarding] = useState('idle'); // idle | oauth | category
+  const [tempStore, setTempStore] = useState('');
+  const navigate = useNavigate();
+
+  /* ── Onboarding handlers ──────────────────────────────────────── */
+
+  const handleConnect = () => setOnboarding('oauth');
+  const handleCancelOAuth = () => setOnboarding('idle');
+
+  const handleAllow = (storeName) => {
+    setTempStore(storeName);
+    setOnboarding('category');
+  };
+
+  const handleCategorySelect = (category) => {
+    setSession({ storeName: tempStore, category });
+    setOnboarding('idle');
+    setTempStore('');
+    navigate('/dashboard');
+  };
+
+  const handleLogout = () => {
+    setSession(null);
+    setOnboarding('idle');
+    navigate('/');
+  };
+
+  /* ── Routes ───────────────────────────────────────────────────── */
+
+  return (
+    <>
+      {/* Onboarding overlays (rendered above everything) */}
+      {onboarding === 'oauth' && (
+        <OAuthScreen onAllow={handleAllow} onCancel={handleCancelOAuth} />
+      )}
+      {onboarding === 'category' && (
+        <CategoryPicker storeName={tempStore} onSelect={handleCategorySelect} />
+      )}
+
+      <Routes>
+        <Route
+          path="/"
+          element={
+            session
+              ? <Navigate to="/dashboard" replace />
+              : <LandingPage onConnect={handleConnect} />
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            session
+              ? <Dashboard session={session} onLogout={handleLogout} />
+              : <Navigate to="/" replace />
+          }
+        />
+      </Routes>
+    </>
   );
 }
