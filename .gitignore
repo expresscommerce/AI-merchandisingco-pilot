@@ -12,3 +12,5 @@ frontend/dist/
 *.egg-info/
 dist/
 build/
+connected_stores.json
+backend/connected_stores.json
