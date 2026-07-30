@@ -23,8 +23,11 @@ export async function fetchResults() {
   return res.json();
 }
 
-export async function approveProposal(id) {
-  const res = await fetch(`${API_BASE}/proposals/${id}/approve`, { method: 'POST' });
+export async function approveProposal(id, shop) {
+  const url = shop
+    ? `${API_BASE}/proposals/${id}/approve?shop=${encodeURIComponent(shop)}`
+    : `${API_BASE}/proposals/${id}/approve`;
+  const res = await fetch(url, { method: 'POST' });
   if (!res.ok) throw new Error(`Failed to approve proposal (${res.status})`);
   return res.json();
 }

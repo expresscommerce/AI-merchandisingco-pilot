@@ -2,7 +2,8 @@
 Merchandising AI Agent Service.
 
 Generates real-time AI recommendations using DeepInfra LLM (meta-llama/Meta-Llama-3.1-70B-Instruct)
-with live product scraping from ANY Shopify store URL, or falls back to category defaults.
+with live product ingestion from ANY Shopify store (via authenticated GraphQL API or public scraper),
+or falls back to category defaults.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from app.models.proposal import (
     PriceChangeProposal,
     Proposal,
 )
+from app.services.shopify_client import get_products
 from app.services.shopify_scraper import fetch_shopify_store_products
 
 DEEPINFRA_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
@@ -94,22 +96,26 @@ STATIC_CATEGORY_CONTEXT = {
 }
 
 
-def generate_live_llm_proposals(category: str, store_url: str | None = None) -> list[Proposal] | None:
-    """Generate live merchandising proposals via DeepInfra LLM API, using real scraped products if store_url is supplied."""
+async def generate_live_llm_proposals(category: str, store_url: str | None = None) -> list[Proposal] | None:
+    """Generate live merchandising proposals via DeepInfra LLM API, using real products if store_url supplied."""
     api_key = settings.DEEPINFRA_API_KEY
     if not api_key or api_key == "your_deepinfra_api_key_here":
         print("⚠️ DeepInfra API key missing; serving cached proposals.")
         return None
 
-    # Attempt to fetch live products if store_url provided
+    # Fetch live products via Shopify client (GraphQL for OAuth connected stores, scraper for public stores)
     scraped_products = []
     if store_url:
-        scraped_products = fetch_shopify_store_products(store_url)
+        try:
+            scraped_products = await get_products(store_url)
+        except Exception as err:
+            print(f"⚠️ get_products exception for {store_url}: {err}")
+            scraped_products = fetch_shopify_store_products(store_url)
 
     currency_symbol = "$"
     if scraped_products:
         currency_symbol = scraped_products[0].get("currency_symbol", "$")
-        print(f"🛍️ Using live scraped store data from '{store_url}' ({len(scraped_products)} SKUs, Currency: {currency_symbol})")
+        print(f"🛍️ Using live store data from '{store_url}' ({len(scraped_products)} SKUs, Currency: {currency_symbol})")
         catalog_context = scraped_products
     else:
         cat_key = category.lower().replace(" & ", "_").replace(" ", "_")
@@ -178,18 +184,10 @@ Do NOT return extra text outside JSON.
     try:
         print(f"🤖 Calling DeepInfra ({MODEL_NAME}) for store '{store_url or category}'...")
         resp = None
-        for attempt in range(1, 4):
-            try:
-                with httpx.Client(timeout=30.0) as client:
-                    resp = client.post(DEEPINFRA_URL, headers=headers, json=payload)
-                if resp.status_code == 200:
-                    break
-            except Exception as net_err:
-                print(f"⚠️ Attempt {attempt}/3 network error: {net_err}")
-                if attempt == 3:
-                    raise net_err
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(DEEPINFRA_URL, headers=headers, json=payload)
 
-        if not resp or resp.status_code != 200:
+        if resp is None or resp.status_code != 200:
             print(f"❌ DeepInfra API error ({resp.status_code if resp else 'No response'}): {resp.text[:200] if resp else ''}")
             return None
 
@@ -208,11 +206,18 @@ Do NOT return extra text outside JSON.
             item["id"] = uuid4()
             item["status"] = "pending"
 
-            # Provide default sparkline if missing
-            if t == "price_change" and not item.get("sparkline_data"):
-                item["sparkline_data"] = [5, 6, 4, 5, 7, 6, 5, 4, 3, 2, 3, 2, 1, 2, 1]
-
             if t == "price_change":
+                raw_sparkline = item.get("sparkline_data")
+                clean_sparkline = []
+                if isinstance(raw_sparkline, list):
+                    for val in raw_sparkline:
+                        try:
+                            clean_sparkline.append(int(val))
+                        except (ValueError, TypeError):
+                            pass
+                if len(clean_sparkline) < 5:
+                    clean_sparkline = [5, 6, 4, 5, 7, 6, 5, 4, 3, 2, 3, 2, 1, 2, 1]
+                item["sparkline_data"] = clean_sparkline
                 parsed_proposals.append(PriceChangeProposal(**item))
             elif t == "copy_rewrite":
                 parsed_proposals.append(CopyRewriteProposal(**item))
@@ -229,10 +234,10 @@ Do NOT return extra text outside JSON.
 
 # ── Category Proposals Accessor ──────────────────────────────────────────
 
-def get_proposals_for_category(category: str | None, store_url: str | None = None) -> list[Proposal]:
-    """Return live proposals generated via DeepInfra AI, using live store scraping if available."""
+async def get_proposals_for_category(category: str | None, store_url: str | None = None) -> list[Proposal]:
+    """Return live proposals generated via DeepInfra AI, using live store ingestion if available."""
     cat_name = category or "Home & Kitchen"
-    live_results = generate_live_llm_proposals(cat_name, store_url=store_url)
+    live_results = await generate_live_llm_proposals(cat_name, store_url=store_url)
     if live_results:
         return live_results
 

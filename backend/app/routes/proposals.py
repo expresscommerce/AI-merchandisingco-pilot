@@ -191,7 +191,7 @@ _store: dict[UUID, Proposal] = {p.id: p for p in _SEED}
 @router.get("/", response_model=list[Proposal], summary="List all proposals")
 async def list_proposals(category: str | None = None, store_url: str | None = None):
     """Return merchandising proposals filtered by store category or live store URL."""
-    category_proposals = get_proposals_for_category(category, store_url=store_url)
+    category_proposals = await get_proposals_for_category(category, store_url=store_url)
     for p in category_proposals:
         _store[p.id] = p
     return category_proposals
@@ -219,13 +219,38 @@ async def approve_proposal(proposal_id: UUID, shop: str | None = None):
 
     proposal.status = "approved"
 
+    # Insert newly approved proposal into live results tracker
+    from app.routes.results import _RESULTS, ProposalResult
+    existing_ids = {r.id for r in _RESULTS}
+    if str(proposal.id) not in existing_ids:
+        summary_str = f"Approved change for {proposal.product_name}"
+        if proposal.type == "price_change":
+            summary_str = f"Price updated to ${getattr(proposal, 'proposed_price', 0):.2f}"
+        elif proposal.type == "copy_rewrite":
+            summary_str = "Listing copy updated with AI conversion optimization"
+
+        _RESULTS.insert(
+            0,
+            ProposalResult(
+                id=str(proposal.id),
+                type=proposal.type,
+                product_name=proposal.product_name,
+                change_summary=summary_str,
+                approved_at="Just now",
+                days_since_approval=0,
+                tracking_status="tracking",
+                outcome="Tracking live impact on your store...",
+            ),
+        )
+
     # If shop parameter provided, attempt live Shopify Admin API execution
     if shop:
         try:
+            prod_id_str = str(getattr(proposal, "product_id", proposal.id))
             if proposal.type == "price_change":
-                await update_price(shop, getattr(proposal, "product_id", proposal.id), proposal.proposed_price)
+                await update_price(shop, prod_id_str, proposal.proposed_price)
             elif proposal.type == "copy_rewrite":
-                await update_description(shop, getattr(proposal, "product_id", proposal.id), proposal.proposed_copy)
+                await update_description(shop, prod_id_str, proposal.proposed_copy)
         except Exception as e:
             print(f"⚠️ Live Shopify update attempt notice: {e}")
 

@@ -47,7 +47,7 @@ def fetch_store_currency(base_url: str) -> tuple[str, str]:
         "Accept": "application/json",
     }
     try:
-        with httpx.Client(timeout=5.0, follow_redirects=True) as client:
+        with httpx.Client(timeout=5.0, follow_redirects=False) as client:
             resp = client.get(cart_url, headers=headers)
         if resp.status_code == 200:
             data = resp.json()
@@ -56,7 +56,7 @@ def fetch_store_currency(base_url: str) -> tuple[str, str]:
             print(f"💱 Detected store currency: {code} ({symbol})")
             return code, symbol
     except Exception as e:
-        print(f"⚠️ Currency lookup fallback: {e}")
+        print(f"⚠️ Currency lookup notice: {e}")
     return "USD", "$"
 
 
@@ -75,12 +75,12 @@ def fetch_shopify_store_products(store_url_or_handle: str, limit: int = 8) -> li
     }
 
     try:
-        print(f"🌐 Fetching live Shopify products from: {target_url}")
-        with httpx.Client(timeout=10.0, follow_redirects=True) as client:
+        print(f"🌐 Fetching public products from: {target_url}")
+        with httpx.Client(timeout=8.0, follow_redirects=False) as client:
             resp = client.get(target_url, headers=headers)
 
         if resp.status_code != 200:
-            print(f"⚠️ Unable to fetch products from {target_url} (HTTP {resp.status_code})")
+            print(f"⚠️ Public products endpoint returned status {resp.status_code} for {base_url} (Store may be dev/password-protected)")
             return []
 
         data = resp.json()

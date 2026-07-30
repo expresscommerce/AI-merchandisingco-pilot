@@ -1,7 +1,7 @@
 /**
  * OAuthScreen — Supports both:
- *   1. Mock/Demo Onboarding Flow (for prospect demos).
- *   2. Real Shopify App OAuth Installation Flow (redirects to /auth/shopify/install?shop=...).
+ *   1. Live Shopify App OAuth Installation Flow (redirects browser window to Shopify OAuth consent screen).
+ *   2. Instant Demo Preview Mode.
  */
 
 import { useState } from 'react';
@@ -17,7 +17,20 @@ export default function OAuthScreen({ onAllow, onCancel }) {
   const [storeInput, setStoreInput] = useState('');
   const [error, setError] = useState('');
 
-  // 1. Mock Demo Flow
+  // 1. Real Shopify OAuth Flow (Redirects Browser)
+  const handleRealOAuth = (e) => {
+    if (e) e.preventDefault();
+    const trimmed = storeInput.trim();
+    if (!trimmed) {
+      setError("Please enter your store's .myshopify.com URL or domain");
+      return;
+    }
+    // Redirect browser window directly to backend OAuth install route
+    const installUrl = `http://localhost:8000/auth/shopify/install?shop=${encodeURIComponent(trimmed)}`;
+    window.location.href = installUrl;
+  };
+
+  // 2. Mock Demo Flow
   const handleMockAllow = () => {
     const trimmed = storeInput.trim();
     if (!trimmed) {
@@ -25,18 +38,6 @@ export default function OAuthScreen({ onAllow, onCancel }) {
       return;
     }
     onAllow(trimmed);
-  };
-
-  // 2. Real Shopify OAuth Flow
-  const handleRealOAuth = () => {
-    const trimmed = storeInput.trim();
-    if (!trimmed) {
-      setError("Please enter your store's .myshopify.com URL");
-      return;
-    }
-    // Redirect browser window to backend OAuth install endpoint
-    const backendUrl = `http://localhost:8000/auth/shopify/install?shop=${encodeURIComponent(trimmed)}`;
-    window.location.href = backendUrl;
   };
 
   return (
@@ -60,61 +61,60 @@ export default function OAuthScreen({ onAllow, onCancel }) {
           </div>
           <h2 className="oauth-header__title">Connect Shopify Store</h2>
           <p className="oauth-header__sub">
-            Connect a live store via OAuth or launch instant demo mode
+            Enter your store domain to connect via real Shopify OAuth
           </p>
         </div>
 
-        {/* Store input */}
-        <div className="oauth-store-input">
+        {/* Store input form */}
+        <form onSubmit={handleRealOAuth} className="oauth-store-input">
           <label htmlFor="store-name" className="oauth-input-label">Shopify Store Domain</label>
           <div className="oauth-input-wrap">
             <input
               id="store-name"
               type="text"
               className={`oauth-input ${error ? 'oauth-input--error' : ''}`}
-              placeholder="e.g. your-store.myshopify.com or gymshark.com"
+              placeholder="e.g. test-store.myshopify.com or gymshark.com"
               value={storeInput}
               onChange={(e) => { setStoreInput(e.target.value); setError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && handleMockAllow()}
               autoFocus
             />
           </div>
           {error && <p className="oauth-input-error">{error}</p>}
-        </div>
 
-        {/* Permissions list */}
-        <div className="oauth-permissions">
-          <p className="oauth-permissions__label">Requested app permissions:</p>
-          <ul className="oauth-permissions__list">
-            {PERMISSIONS.map((p) => (
-              <li key={p.scope} className="oauth-perm">
-                <span className="oauth-perm__icon" aria-hidden="true">{p.icon}</span>
-                <span className="oauth-perm__text">{p.label}</span>
-                <span className="oauth-perm__scope">{p.scope}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+          {/* Permissions list */}
+          <div className="oauth-permissions" style={{ marginTop: '16px' }}>
+            <p className="oauth-permissions__label">Requested app permissions:</p>
+            <ul className="oauth-permissions__list">
+              {PERMISSIONS.map((p) => (
+                <li key={p.scope} className="oauth-perm">
+                  <span className="oauth-perm__icon" aria-hidden="true">{p.icon}</span>
+                  <span className="oauth-perm__text">{p.label}</span>
+                  <span className="oauth-perm__scope">{p.scope}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-        {/* Actions */}
-        <div className="oauth-actions">
-          <button className="btn btn--primary oauth-btn--allow" onClick={handleMockAllow}>
-            Instant Demo Preview
-          </button>
-          <button
-            className="btn btn--ghost oauth-btn--real"
-            onClick={handleRealOAuth}
-            title="Redirects to Shopify Partner App OAuth authorization screen"
-          >
-            🔑 Live Shopify OAuth Connection
-          </button>
-          <button className="btn btn--ghost oauth-btn--cancel" onClick={onCancel}>
-            Cancel
-          </button>
-        </div>
+          {/* Actions */}
+          <div className="oauth-actions">
+            <button type="submit" className="btn btn--primary oauth-btn--allow">
+              🔑 Connect via Shopify OAuth
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost oauth-btn--real"
+              onClick={handleMockAllow}
+            >
+              Instant Demo Mode (No Auth)
+            </button>
+            <button type="button" className="btn btn--ghost oauth-btn--cancel" onClick={onCancel}>
+              Cancel
+            </button>
+          </div>
+        </form>
 
         <p className="oauth-footer">
-          Use Instant Demo for instant previews, or Live OAuth to connect your real Shopify Partner store.
+          Clicking <strong>Connect via Shopify OAuth</strong> will redirect to your store's Shopify admin login screen.
         </p>
       </div>
     </div>

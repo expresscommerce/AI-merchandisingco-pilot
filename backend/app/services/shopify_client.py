@@ -77,20 +77,27 @@ async def get_products(store_id_or_domain: str) -> list[dict[str, Any]]:
 
             if resp.status_code == 200:
                 data = resp.json()
-                edges = data.get("data", {}).get("products", {}).get("edges", [])
+                data_obj = data.get("data") or {}
+                products_obj = data_obj.get("products") or {}
+                edges = products_obj.get("edges") or []
+
+                if not edges and "errors" in data:
+                    print(f"⚠️ Shopify GraphQL returned errors: {data.get('errors')}")
+
                 products = []
                 for edge in edges:
-                    node = edge.get("node", {})
-                    variants = node.get("variants", {}).get("edges", [])
-                    first_variant = variants[0].get("node", {}) if variants else {}
+                    node = (edge or {}).get("node") or {}
+                    variants = (node.get("variants") or {}).get("edges") or []
+                    first_variant = (variants[0] or {}).get("node") if variants else {}
                     products.append({
                         "id": node.get("id"),
                         "product_name": node.get("title"),
                         "current_copy": node.get("description"),
-                        "current_price": float(first_variant.get("price", 0.0) or 0.0),
-                        "variant_id": first_variant.get("id"),
+                        "current_price": float((first_variant or {}).get("price", 0.0) or 0.0),
+                        "variant_id": (first_variant or {}).get("id"),
                     })
-                return products
+                if products:
+                    return products
         except Exception as e:
             print(f"⚠️ Shopify GraphQL API error for {clean_domain}: {e}")
 
@@ -102,7 +109,7 @@ async def get_product(store_id_or_domain: str, product_id: str) -> dict[str, Any
     """Fetch single product details."""
     products = await get_products(store_id_or_domain)
     for p in products:
-        if str(p.get("id")) == str(product_id):
+        if str(p.get("id")) == product_id:
             return p
     return products[0] if products else None
 
@@ -116,11 +123,20 @@ async def update_price(store_id_or_domain: str, product_or_variant_id: str, new_
         access_token = store["access_token"]
 
         # Extract numerical ID if GID string e.g. gid://shopify/ProductVariant/12345
-        variant_num_match = re.search(r"\d+", str(product_or_variant_id))
-        variant_num = variant_num_match.group(0) if variant_num_match else str(product_or_variant_id)
+        variant_num_match = re.search(r"\d+", product_or_variant_id)
+        variant_num = variant_num_match.group(0) if variant_num_match else product_or_variant_id
+
+        if not variant_num.isdigit():
+            products = await get_products(clean_domain)
+            for p in products:
+                if p.get("variant_id"):
+                    v_match = re.search(r"\d+", str(p.get("variant_id")))
+                    if v_match:
+                        variant_num = v_match.group(0)
+                        break
 
         rest_url = f"https://{clean_domain}/admin/api/{SHOPIFY_API_VERSION}/variants/{variant_num}.json"
-        payload = {"variant": {"id": int(variant_num), "price": f"{new_price:.2f}"}}
+        payload = {"variant": {"id": int(variant_num) if variant_num.isdigit() else variant_num, "price": f"{new_price:.2f}"}}
 
         try:
             print(f"⚡ Updating price on real Shopify store '{clean_domain}' (Variant {variant_num} -> ${new_price:.2f})...")
@@ -151,11 +167,20 @@ async def update_description(store_id_or_domain: str, product_id: str, new_copy:
 
     if store and not store.get("is_demo") and store.get("access_token"):
         access_token = store["access_token"]
-        product_num_match = re.search(r"\d+", str(product_id))
-        product_num = product_num_match.group(0) if product_num_match else str(product_id)
+        product_num_match = re.search(r"\d+", product_id)
+        product_num = product_num_match.group(0) if product_num_match else product_id
+
+        if not product_num.isdigit():
+            products = await get_products(clean_domain)
+            for p in products:
+                if p.get("id"):
+                    p_match = re.search(r"\d+", str(p.get("id")))
+                    if p_match:
+                        product_num = p_match.group(0)
+                        break
 
         rest_url = f"https://{clean_domain}/admin/api/{SHOPIFY_API_VERSION}/products/{product_num}.json"
-        payload = {"product": {"id": int(product_num), "body_html": f"<p>{new_copy}</p>"}}
+        payload = {"product": {"id": int(product_num) if product_num.isdigit() else product_num, "body_html": f"<p>{new_copy}</p>"}}
 
         try:
             print(f"⚡ Updating copy on real Shopify store '{clean_domain}' (Product {product_num})...")

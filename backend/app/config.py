@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     SHOPIFY_API_KEY: str = ""
     SHOPIFY_API_SECRET: str = ""
     SHOPIFY_REDIRECT_URI: str = "http://localhost:8000/auth/shopify/callback"
-    SHOPIFY_SCOPES: str = "read_products,read_orders,write_products"
+    SHOPIFY_SCOPES: str = "read_products,write_products,read_orders,read_product_listings"
     FRONTEND_URL: str = "http://localhost:5173"
 
 
