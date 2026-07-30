@@ -219,6 +219,10 @@ async def approve_proposal(proposal_id: UUID, shop: str | None = None):
 
     proposal.status = "approved"
 
+    # Mark product as approved to prevent re-recommending in future AI analyses
+    from app.services.agent import mark_product_as_approved
+    mark_product_as_approved(shop or "default", proposal.product_name)
+
     # Insert newly approved proposal into live results tracker
     from app.routes.results import _RESULTS, ProposalResult
     existing_ids = {r.id for r in _RESULTS}

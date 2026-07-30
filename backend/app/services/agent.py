@@ -27,6 +27,17 @@ from app.services.shopify_scraper import fetch_shopify_store_products
 DEEPINFRA_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
 MODEL_NAME = "meta-llama/Meta-Llama-3.1-70B-Instruct"
 
+# Global set of approved product names per store to prevent re-recommending approved SKUs
+_APPROVED_PRODUCTS_BY_STORE: dict[str, set[str]] = {}
+
+
+def mark_product_as_approved(store_url: str, product_name: str) -> None:
+    """Record a product as approved for a store so it won't be re-recommended."""
+    clean_key = (store_url or "default").lower().strip()
+    if clean_key not in _APPROVED_PRODUCTS_BY_STORE:
+        _APPROVED_PRODUCTS_BY_STORE[clean_key] = set()
+    _APPROVED_PRODUCTS_BY_STORE[clean_key].add(product_name.lower().strip())
+
 
 # ── Static Fallback Catalog Context ────────────────────────────────────────
 
@@ -38,7 +49,6 @@ STATIC_CATEGORY_CONTEXT = {
             "cost_price": 18.50,
             "competitor_prices": {"Amazon": 29.99, "Target": 28.99},
             "recent_reviews": ["Great heavy duty skillet, but price was a bit higher than Target."],
-            "sparkline_data": [3, 2, 4, 2, 3, 1, 2, 3, 2, 1, 2, 3, 2, 2, 1, 3, 2, 1, 2, 2, 3, 1, 2, 2, 1, 3, 2, 1, 2, 2],
         },
         {
             "product_name": "Artisan Ceramic Mug Set (4-pack)",
@@ -52,56 +62,71 @@ STATIC_CATEGORY_CONTEXT = {
             "co_purchase_pct": 23.0,
             "discount_percent": 15.0,
         },
+        {
+            "product_name": "Stainless Steel Measuring Cups (6-Piece)",
+            "current_price": 24.99,
+            "cost_price": 9.20,
+            "competitor_prices": {"Amazon": 19.99},
+        },
+        {
+            "product_name": "Silicone Baking Mat (2-Pack)",
+            "current_price": 21.99,
+            "current_copy": "Reusable non-stick baking mats for oven sheets.",
+        },
+        {
+            "product_name": "French Press Coffee Maker (34 oz)",
+            "current_price": 42.00,
+            "cost_price": 16.00,
+            "competitor_prices": {"Target": 34.99},
+        },
     ],
     "apparel": [
         {
             "product_name": "Heavyweight Organic Cotton Hoodie",
             "current_price": 78.00,
             "cost_price": 26.00,
-            "competitor_prices": {"Everlane": 88.00, "Gymshark": 65.00, "Uniqlo": 49.90},
-            "sparkline_data": [12, 14, 11, 13, 10, 12, 11, 9, 10, 8, 9, 7, 8, 6, 7, 5, 6, 5, 4, 5, 4, 3, 4, 3, 3, 2, 3, 2, 2, 2],
+            "competitor_prices": {"Everlane": 88.00, "Gymshark": 65.00},
         },
         {
             "product_name": "Water-Resistant Commuter Jacket",
             "current_copy": "Polyester commuter shell. DWR coating. Multiple utility pockets.",
-            "recent_reviews": ["High quality construction but page copy doesn't explain technical fabric benefits."],
         },
         {
             "product_name": "Ultimate Everyday Apparel Capsule",
-            "co_purchased_skus": ["Crewneck Tee (3-pack)", "Merino Wool Socks (3-pack)", "Stretch Tech Chino Pants"],
+            "co_purchased_skus": ["Crewneck Tee", "Merino Socks", "Chino Pants"],
             "co_purchase_pct": 28.0,
             "discount_percent": 12.0,
         },
-    ],
-    "electronics": [
         {
-            "product_name": "Noise-Cancelling Wireless Headphones",
-            "current_price": 149.99,
-            "cost_price": 52.00,
-            "competitor_prices": {"Anker": 129.99, "Sony": 198.00},
-            "sparkline_data": [18, 16, 15, 14, 12, 13, 11, 10, 11, 9, 8, 9, 7, 8, 6, 7, 5, 6, 4, 5, 4, 3, 3, 2, 3, 2, 2, 1, 2, 1],
+            "product_name": "Classic Crewneck Cotton Tee (3-Pack)",
+            "current_price": 45.00,
+            "cost_price": 14.00,
         },
         {
-            "product_name": "Magnetic 3-in-1 Wireless Charging Stand",
-            "current_copy": "15W MagSafe compatible stand for Phone, Watch, and Earbuds simultaneously.",
-            "recent_reviews": ["Needs clearer highlights on MagSafe fast charging."],
+            "product_name": "Performance Stretch Chino Pants",
+            "current_price": 88.00,
+            "cost_price": 31.00,
         },
         {
-            "product_name": "Desk Productivity Power Bundle",
-            "co_purchased_skus": ["Ergonomic Vertical Mouse", "65W GaN Charger", "Wireless Charging Stand"],
-            "co_purchase_pct": 31.0,
-            "discount_percent": 15.0,
+            "product_name": "Merino Wool Everyday Socks",
+            "current_price": 22.00,
+            "cost_price": 6.50,
         },
     ],
 }
 
 
 async def generate_live_llm_proposals(category: str, store_url: str | None = None) -> list[Proposal] | None:
-    """Generate live merchandising proposals via DeepInfra LLM API, using real products if store_url supplied."""
+    """Generate 6 live merchandising proposals via DeepInfra LLM API, using real products if store_url supplied."""
     api_key = settings.DEEPINFRA_API_KEY
     if not api_key or api_key == "your_deepinfra_api_key_here":
         print("⚠️ DeepInfra API key missing; serving cached proposals.")
         return None
+
+    # Retrieve list of already approved product names to exclude
+    store_key = (store_url or "default").lower().strip()
+    approved_set = _APPROVED_PRODUCTS_BY_STORE.get(store_key, set())
+    approved_list_str = ", ".join([f"'{p}'" for p in approved_set]) if approved_set else "None"
 
     # Fetch live products via Shopify client (GraphQL for OAuth connected stores, scraper for public stores)
     scraped_products = []
@@ -110,7 +135,7 @@ async def generate_live_llm_proposals(category: str, store_url: str | None = Non
             scraped_products = await get_products(store_url)
         except Exception as err:
             print(f"⚠️ get_products exception for {store_url}: {err}")
-            scraped_products = fetch_shopify_store_products(store_url)
+            scraped_products = fetch_shopify_store_products(store_url, limit=15)
 
     currency_symbol = "$"
     if scraped_products:
@@ -122,17 +147,16 @@ async def generate_live_llm_proposals(category: str, store_url: str | None = Non
         catalog_context = STATIC_CATEGORY_CONTEXT.get(cat_key, STATIC_CATEGORY_CONTEXT["home_kitchen"])
 
     prompt = f"""You are an expert AI Merchandising Assistant for an e-commerce platform.
-Analyze the following catalog data for store '{store_url or category}' and generate 3 proposals.
-IMPORTANT CURRENCY INSTRUCTION: The store's currency symbol is '{currency_symbol}'. Format all estimated_impact strings using '{currency_symbol}' (e.g., '+{currency_symbol}4,200/mo revenue' or '+{currency_symbol}12.50 AOV').
+Analyze the following catalog data for store '{store_url or category}' and generate EXACTLY 6 merchandising proposals (a diverse mix of 2 price_change, 2 copy_rewrite, and 2 bundle_suggestion).
 
-1. A price_change proposal suggesting an optimized new price (recovering sales velocity or maximizing margin).
-2. A copy_rewrite proposal with a compelling, conversion-optimized product description.
-3. A bundle_suggestion proposal bundling complementary items to boost AOV.
+CRITICAL EXCLUSION RULE: DO NOT generate proposals for the following products as their changes were ALREADY APPROVED by the merchant: [{approved_list_str}]. Select other products from the catalog.
+
+IMPORTANT CURRENCY INSTRUCTION: The store's currency symbol is '{currency_symbol}'. Format all estimated_impact strings using '{currency_symbol}' (e.g., '+{currency_symbol}4,200/mo revenue' or '+{currency_symbol}12.50 AOV').
 
 Catalog Data:
 {json.dumps(catalog_context, indent=2)}
 
-Output ONLY a JSON array containing 3 objects with exact schema:
+Output ONLY a JSON array containing 6 objects with exact schema:
 [
   {{
     "type": "price_change",
@@ -178,18 +202,18 @@ Do NOT return extra text outside JSON.
         "model": MODEL_NAME,
         "messages": [{"role": "user", "content": prompt}],
         "response_format": {"type": "json_object"},
-        "temperature": 0.3,
+        "temperature": 0.4,
     }
 
     try:
-        print(f"🤖 Calling DeepInfra ({MODEL_NAME}) for store '{store_url or category}'...")
+        print(f"🤖 Calling DeepInfra ({MODEL_NAME}) for 6 proposals on '{store_url or category}'...")
         resp = None
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=35.0) as client:
             resp = await client.post(DEEPINFRA_URL, headers=headers, json=payload)
 
         if resp is None or resp.status_code != 200:
-            err_code = resp.status_code if resp is not None else 'No response'
-            err_text = resp.text[:200] if resp is not None else ''
+            err_code = resp.status_code if resp is not None else "No response"
+            err_text = resp.text[:200] if resp is not None else ""
             print(f"❌ DeepInfra API error ({err_code}): {err_text}")
             return None
 
@@ -204,6 +228,11 @@ Do NOT return extra text outside JSON.
 
         parsed_proposals: list[Proposal] = []
         for idx, item in enumerate(raw_items):
+            p_name = item.get("product_name", "").strip()
+            if p_name.lower() in approved_set:
+                print(f"⏩ Skipping already approved product: {p_name}")
+                continue
+
             t = item.get("type")
             item["id"] = uuid4()
             item["status"] = "pending"
@@ -213,7 +242,7 @@ Do NOT return extra text outside JSON.
                 matched_prod = scraped_products[idx % len(scraped_products)]
                 for sp in scraped_products:
                     sp_name = (sp.get("product_name") or "").lower()
-                    it_name = (item.get("product_name") or "").lower()
+                    it_name = p_name.lower()
                     if sp_name and (sp_name in it_name or it_name in sp_name):
                         matched_prod = sp
                         break

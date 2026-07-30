@@ -72,7 +72,11 @@ export default function ResultsTab({ results, loading, error, onRetry }) {
   }
 
   /* ── Results list ───────────────────────────────────────────────── */
-  const sorted = [...results].sort((a, b) => a.days_since_approval - b.days_since_approval);
+  const sorted = [...results].sort((a, b) => {
+    if (a.days_since_approval === 0 && b.days_since_approval !== 0) return -1;
+    if (b.days_since_approval === 0 && a.days_since_approval !== 0) return 1;
+    return a.days_since_approval - b.days_since_approval;
+  });
 
   return (
     <div className="results-tab">
