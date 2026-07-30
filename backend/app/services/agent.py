@@ -8,6 +8,7 @@ or falls back to category defaults.
 
 from __future__ import annotations
 
+import datetime
 import json
 from typing import Any
 from uuid import uuid4
@@ -29,6 +30,42 @@ MODEL_NAME = "meta-llama/Meta-Llama-3.1-70B-Instruct"
 
 # Global set of approved product names per store to prevent re-recommending approved SKUs
 _APPROVED_PRODUCTS_BY_STORE: dict[str, set[str]] = {}
+
+
+def get_seasonal_events_context(category: str) -> str:
+    """Return current date and upcoming key retail calendar periods for LLM context."""
+    now = datetime.datetime.now()
+    current_date_str = now.strftime("%B %d, %Y")
+    month = now.month
+
+    # Static seasonal retail periods calendar
+    seasonal_periods = [
+        "New Year & Resolution Push (January)",
+        "Valentine's Day & Gift Season (February 14)",
+        "Spring Refresh & Easter Sales (March - April)",
+        "Mother's Day & Graduation (May)",
+        "Father's Day & Summer Kickoff (June)",
+        "Back-to-School & College Prep (July - September)",
+        "Fall Launch & Halloween (September - October)",
+        "Black Friday & Cyber Monday (BFCM) Cyber Week (November)",
+        "Holiday Shopping, Christmas & Year-End Clearance (December)",
+    ]
+
+    # Select primary upcoming events based on current month
+    if month in (7, 8, 9):
+        primary_upcoming = "Back-to-School / College Prep & Labor Day Sales"
+    elif month in (10, 11):
+        primary_upcoming = "Black Friday / Cyber Monday (BFCM) & Holiday Gift Season"
+    elif month == 12:
+        primary_upcoming = "Holiday Gifting, Christmas & Year-End Clearance"
+    elif month in (1, 2):
+        primary_upcoming = "Valentine's Day Gifting & Spring Product Launches"
+    elif month in (3, 4, 5):
+        primary_upcoming = "Spring Refresh, Easter & Mother's Day Gifting"
+    else:
+        primary_upcoming = "Father's Day & Summer Clearance"
+
+    return f"Current Date: {current_date_str}. Primary Upcoming Retail Period: {primary_upcoming}. Annual Retail Calendar: {', '.join(seasonal_periods)}."
 
 
 def mark_product_as_approved(store_url: str, product_name: str) -> None:
@@ -153,8 +190,16 @@ async def generate_live_llm_proposals(category: str, store_url: str | None = Non
         cat_key = category.lower().replace(" & ", "_").replace(" ", "_")
         catalog_context = STATIC_CATEGORY_CONTEXT.get(cat_key, STATIC_CATEGORY_CONTEXT["home_kitchen"])
 
+    seasonal_retail_context = get_seasonal_events_context(category)
+
     prompt = f"""You are an expert AI Merchandising Assistant for an e-commerce platform.
 Analyze the following catalog data for store '{store_url or category}' and generate EXACTLY 6 merchandising proposals (a diverse mix of 2 price_change, 2 copy_rewrite, and 2 bundle_suggestion).
+
+SEASONAL RETAIL CONTEXT:
+{seasonal_retail_context}
+
+SEASONAL TIMING INSTRUCTION:
+When reasoning about bundle suggestions or repricing, explicitly consider whether an upcoming seasonal period makes a proposal more or less urgent. If seasonal timing applies, mention this explicitly in the 'reasoning' field (e.g., "With Back-to-School season 3 weeks out, bundling these gift-adjacent items now is well-timed"), AND populate the 'seasonal_context' field with a short descriptive title (e.g., "Back-to-School Season" or "BFCM Pre-Launch"). If seasonal timing does not apply to a proposal, set 'seasonal_context' to null.
 
 CRITICAL EXCLUSION RULE: DO NOT generate proposals for the following products as their changes were ALREADY APPROVED by the merchant: [{approved_list_str}]. Select other products from the catalog.
 
@@ -173,6 +218,7 @@ Output ONLY a JSON array containing 6 objects with exact schema:
     "estimated_impact": str (formatted using '{currency_symbol}'),
     "current_price": float,
     "proposed_price": float,
+    "seasonal_context": str | null,
     "sparkline_data": [int, ...],
     "data_trail": [str, ...]
   }},
@@ -184,6 +230,7 @@ Output ONLY a JSON array containing 6 objects with exact schema:
     "estimated_impact": str (formatted using '{currency_symbol}'),
     "current_copy": str,
     "proposed_copy": str,
+    "seasonal_context": str | null,
     "data_trail": [str, ...]
   }},
   {{
@@ -195,6 +242,7 @@ Output ONLY a JSON array containing 6 objects with exact schema:
     "products": [str, ...],
     "discount_percent": float,
     "co_purchase_pct": float,
+    "seasonal_context": str | null,
     "data_trail": [str, ...]
   }}
 ]
@@ -345,11 +393,12 @@ _FALLBACK_CACHE: dict[str, list[Proposal]] = {
             id=uuid4(),
             product_name="Kitchen Essentials Cutting Board Bundle",
             reasoning=(
-                "Market-basket order graph shows these three cutting tools co-purchased in 23% of orders. "
-                "Creating a 15% discount bundle streamlines checkout and lifts Average Order Value."
+                "With Back-to-School season and fall cooking preparation 3 weeks away, "
+                "bundling these gift-adjacent kitchen tools now is well-timed. Market-basket order graph shows co-purchase overlap in 23% of orders."
             ),
             confidence="high",
             estimated_impact="+$8.50 AOV",
+            seasonal_context="Back-to-School & Fall Cooking Season",
             products=[
                 "Bamboo Cutting Board (Large)",
                 "Walnut End-Grain Chopping Block",

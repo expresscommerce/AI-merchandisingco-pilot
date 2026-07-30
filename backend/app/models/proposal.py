@@ -37,6 +37,7 @@ class ProposalBase(BaseModel):
     confidence: Confidence
     estimated_impact: str
     status: ProposalStatus = "pending"
+    seasonal_context: str | None = None
 
     # Sequence of data checks the AI performed to arrive at this proposal
     data_trail: list[str] = Field(default_factory=list)

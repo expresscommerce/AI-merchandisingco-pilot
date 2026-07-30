@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ async def _run_scheduled_analysis() -> None:
             logger.info("⏰ Scheduled analysis: no connected stores, skipping.")
             continue
 
-        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         logger.info(f"⏰ Scheduled analysis started at {timestamp} for {len(connected)} store(s)")
 
         for shop_domain, store_info in connected.items():
@@ -53,7 +53,7 @@ async def _run_scheduled_analysis() -> None:
             except Exception as e:
                 logger.error(f"❌ Scheduled analysis error for {shop_domain}: {e}")
 
-        logger.info(f"⏰ Scheduled analysis complete at {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+        logger.info(f"⏰ Scheduled analysis complete at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
 
 
 def get_scheduled_proposals(store_url: str) -> list | None:
