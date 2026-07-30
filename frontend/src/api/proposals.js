@@ -6,8 +6,13 @@
 
 const API_BASE = '/api';
 
-export async function fetchProposals() {
-  const res = await fetch(`${API_BASE}/proposals/`);
+export async function fetchProposals(category, storeUrl) {
+  const params = new URLSearchParams();
+  if (category) params.append('category', category);
+  if (storeUrl) params.append('store_url', storeUrl);
+
+  const url = `${API_BASE}/proposals/?${params.toString()}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch proposals (${res.status})`);
   return res.json();
 }

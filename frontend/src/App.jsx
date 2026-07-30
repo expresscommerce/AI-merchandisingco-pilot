@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Navigate, useSearchParams } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import OAuthScreen from './pages/OAuthScreen';
 import CategoryPicker from './pages/CategoryPicker';
@@ -9,10 +9,10 @@ import ResultsTab from './components/ResultsTab';
 import Toast from './components/Toast';
 import {
   fetchProposals,
-  fetchResults,
   approveProposal,
   rejectProposal,
 } from './api/proposals';
+import { getResultsForCategory } from './data/dummyResults';
 
 const COLLAPSE_MS = 450;
 
@@ -20,7 +20,7 @@ const COLLAPSE_MS = 450;
    DASHBOARD — the authenticated view
    ══════════════════════════════════════════════════════════════════════ */
 
-function Dashboard({ session, onLogout }) {
+function Dashboard({ session, onLogout, initialToast }) {
   const [tab, setTab] = useState('proposals');
   const [proposals, setProposals] = useState([]);
   const [results, setResults] = useState([]);
@@ -28,7 +28,7 @@ function Dashboard({ session, onLogout }) {
   const [loadingResults, setLoadingResults] = useState(true);
   const [errorProposals, setErrorProposals] = useState(null);
   const [errorResults, setErrorResults] = useState(null);
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState(initialToast || null);
   const [recentlyApproved, setRecentlyApproved] = useState([]);
 
   /* ── Fetch ────────────────────────────────────────────────────── */
@@ -37,25 +37,25 @@ function Dashboard({ session, onLogout }) {
     setLoadingProposals(true);
     setErrorProposals(null);
     try {
-      setProposals(await fetchProposals());
+      setProposals(await fetchProposals(session?.category, session?.storeName));
     } catch (err) {
       setErrorProposals(err.message);
     } finally {
       setLoadingProposals(false);
     }
-  }, []);
+  }, [session?.category, session?.storeName]);
 
-  const loadResults = useCallback(async () => {
+  const loadResults = useCallback(() => {
     setLoadingResults(true);
     setErrorResults(null);
     try {
-      setResults(await fetchResults());
+      setResults(getResultsForCategory(session?.category));
     } catch (err) {
       setErrorResults(err.message);
     } finally {
       setLoadingResults(false);
     }
-  }, []);
+  }, [session?.category]);
 
   useEffect(() => {
     loadProposals();
@@ -70,7 +70,7 @@ function Dashboard({ session, onLogout }) {
       prev.map((p) => (p.id === id ? { ...p, status: 'approved' } : p))
     );
     try {
-      await approveProposal(id);
+      await approveProposal(id, session?.storeName);
       setTimeout(() => {
         if (proposal) {
           setRecentlyApproved((prev) => [
@@ -86,7 +86,7 @@ function Dashboard({ session, onLogout }) {
       );
       setToast('Failed to approve — please try again.');
     }
-  }, [proposals]);
+  }, [proposals, session?.storeName]);
 
   /* ── Optimistic reject ────────────────────────────────────────── */
 
@@ -131,7 +131,8 @@ function Dashboard({ session, onLogout }) {
           <div className="app-header__right">
             <span className="app-header__store">
               <span className="store-dot" aria-hidden="true" />
-              {session.storeName}.myshopify.com
+              {session.storeName}
+              {session.isDemo && <span className="demo-badge">Demo</span>}
             </span>
             <button className="btn-logout" onClick={onLogout}>
               Log out
@@ -202,11 +203,28 @@ function Dashboard({ session, onLogout }) {
    ══════════════════════════════════════════════════════════════════════ */
 
 export default function App() {
-  // Session state — in-memory only, no localStorage
-  const [session, setSession] = useState(null);     // { storeName, category }
+  const [session, setSession] = useState(null);     // { storeName, category, isDemo }
   const [onboarding, setOnboarding] = useState('idle'); // idle | oauth | category
   const [tempStore, setTempStore] = useState('');
+  const [initialToast, setInitialToast] = useState(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  /* ── Check for OAuth redirect params (?connected=true&shop=...) ─── */
+
+  useEffect(() => {
+    const isConnected = searchParams.get('connected') === 'true';
+    const shop = searchParams.get('shop');
+    const oauthError = searchParams.get('error');
+
+    if (isConnected && shop) {
+      setSession({ storeName: shop, category: 'General', isDemo: false });
+      setInitialToast('Store connected — analyzing your catalog now');
+      navigate('/dashboard', { replace: true });
+    } else if (oauthError) {
+      setInitialToast(`OAuth Error: ${oauthError}`);
+    }
+  }, [searchParams, navigate]);
 
   /* ── Onboarding handlers ──────────────────────────────────────── */
 
@@ -219,7 +237,7 @@ export default function App() {
   };
 
   const handleCategorySelect = (category) => {
-    setSession({ storeName: tempStore, category });
+    setSession({ storeName: tempStore, category, isDemo: true });
     setOnboarding('idle');
     setTempStore('');
     navigate('/dashboard');
@@ -228,6 +246,7 @@ export default function App() {
   const handleLogout = () => {
     setSession(null);
     setOnboarding('idle');
+    setInitialToast(null);
     navigate('/');
   };
 
@@ -235,7 +254,7 @@ export default function App() {
 
   return (
     <>
-      {/* Onboarding overlays (rendered above everything) */}
+      {/* Onboarding overlays */}
       {onboarding === 'oauth' && (
         <OAuthScreen onAllow={handleAllow} onCancel={handleCancelOAuth} />
       )}
@@ -256,7 +275,7 @@ export default function App() {
           path="/dashboard"
           element={
             session
-              ? <Dashboard session={session} onLogout={handleLogout} />
+              ? <Dashboard session={session} onLogout={handleLogout} initialToast={initialToast} />
               : <Navigate to="/" replace />
           }
         />

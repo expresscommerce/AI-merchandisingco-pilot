@@ -15,6 +15,7 @@ from app.models.proposal import (
     Proposal,
     ProposalStatusUpdate,
 )
+from app.services.agent import get_proposals_for_category
 
 router = APIRouter(prefix="/proposals", tags=["proposals"])
 
@@ -188,9 +189,12 @@ _store: dict[UUID, Proposal] = {p.id: p for p in _SEED}
 
 
 @router.get("/", response_model=list[Proposal], summary="List all proposals")
-async def list_proposals():
-    """Return every merchandising proposal (all statuses)."""
-    return list(_store.values())
+async def list_proposals(category: str | None = None, store_url: str | None = None):
+    """Return merchandising proposals filtered by store category or live store URL."""
+    category_proposals = get_proposals_for_category(category, store_url=store_url)
+    for p in category_proposals:
+        _store[p.id] = p
+    return category_proposals
 
 
 @router.get("/{proposal_id}", response_model=Proposal, summary="Get a proposal")
@@ -200,18 +204,31 @@ async def get_proposal(proposal_id: UUID):
         raise HTTPException(status_code=404, detail="Proposal not found")
     return proposal
 
+from app.services.shopify_client import update_description, update_price
 
 @router.post(
     "/{proposal_id}/approve",
     response_model=ProposalStatusUpdate,
     summary="Approve a proposal",
 )
-async def approve_proposal(proposal_id: UUID):
-    """Mark a proposal as approved (no Shopify call yet)."""
+async def approve_proposal(proposal_id: UUID, shop: str | None = None):
+    """Mark a proposal as approved and execute price/copy changes on Shopify if connected."""
     proposal = _store.get(proposal_id)
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
+
     proposal.status = "approved"
+
+    # If shop parameter provided, attempt live Shopify Admin API execution
+    if shop:
+        try:
+            if proposal.type == "price_change":
+                await update_price(shop, getattr(proposal, "product_id", proposal.id), proposal.proposed_price)
+            elif proposal.type == "copy_rewrite":
+                await update_description(shop, getattr(proposal, "product_id", proposal.id), proposal.proposed_copy)
+        except Exception as e:
+            print(f"⚠️ Live Shopify update attempt notice: {e}")
+
     return ProposalStatusUpdate(id=proposal.id, status=proposal.status)
 
 

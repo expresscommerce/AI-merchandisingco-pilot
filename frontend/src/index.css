@@ -1105,6 +1105,17 @@ ul { list-style: none; }
   flex-shrink: 0;
 }
 
+.demo-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--clr-accent);
+  background: var(--clr-accent-subtle);
+  border: 1px solid #e0e7ff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
 .btn-logout {
   font-size: 13px;
   font-weight: 600;
