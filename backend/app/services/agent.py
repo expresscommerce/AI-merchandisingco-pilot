@@ -201,10 +201,24 @@ Do NOT return extra text outside JSON.
             raw_items = raw_items["items"]
 
         parsed_proposals: list[Proposal] = []
-        for item in raw_items:
+        for idx, item in enumerate(raw_items):
             t = item.get("type")
             item["id"] = uuid4()
             item["status"] = "pending"
+
+            # Attach real store product_id / variant_id from catalog context if available
+            if scraped_products:
+                matched_prod = scraped_products[idx % len(scraped_products)]
+                for sp in scraped_products:
+                    sp_name = (sp.get("product_name") or "").lower()
+                    it_name = (item.get("product_name") or "").lower()
+                    if sp_name and (sp_name in it_name or it_name in sp_name):
+                        matched_prod = sp
+                        break
+                if matched_prod.get("id"):
+                    item["product_id"] = str(matched_prod["id"])
+                if matched_prod.get("variant_id"):
+                    item["variant_id"] = str(matched_prod["variant_id"])
 
             if t == "price_change":
                 raw_sparkline = item.get("sparkline_data")

@@ -246,11 +246,13 @@ async def approve_proposal(proposal_id: UUID, shop: str | None = None):
     # If shop parameter provided, attempt live Shopify Admin API execution
     if shop:
         try:
-            prod_id_str = str(getattr(proposal, "product_id", proposal.id))
+            target_variant_id = str(getattr(proposal, "variant_id", None) or getattr(proposal, "product_id", None) or proposal.id)
+            target_product_id = str(getattr(proposal, "product_id", None) or getattr(proposal, "variant_id", None) or proposal.id)
+
             if proposal.type == "price_change":
-                await update_price(shop, prod_id_str, proposal.proposed_price)
+                await update_price(shop, target_variant_id, proposal.proposed_price)
             elif proposal.type == "copy_rewrite":
-                await update_description(shop, prod_id_str, proposal.proposed_copy)
+                await update_description(shop, target_product_id, proposal.proposed_copy)
         except Exception as e:
             print(f"⚠️ Live Shopify update attempt notice: {e}")
 
