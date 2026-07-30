@@ -1,17 +1,9 @@
 import { useEffect } from 'react';
 
-/**
- * Minimal error-toast that auto-dismisses.
- *
- * Props:
- *   message  — text to show
- *   onClose  — called when toast should disappear
- *   duration — ms before auto-dismiss (default 4000)
- */
 export default function Toast({ message, onClose, duration = 4000 }) {
   useEffect(() => {
-    const timer = setTimeout(onClose, duration);
-    return () => clearTimeout(timer);
+    const t = setTimeout(onClose, duration);
+    return () => clearTimeout(t);
   }, [onClose, duration]);
 
   if (!message) return null;
@@ -20,13 +12,7 @@ export default function Toast({ message, onClose, duration = 4000 }) {
     <div className="toast" role="alert" aria-live="assertive">
       <span className="toast-icon">⚠</span>
       <span className="toast-msg">{message}</span>
-      <button
-        className="toast-close"
-        onClick={onClose}
-        aria-label="Dismiss notification"
-      >
-        ×
-      </button>
+      <button className="toast-close" onClick={onClose} aria-label="Dismiss">×</button>
     </div>
   );
 }

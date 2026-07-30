@@ -36,6 +36,9 @@ class ProposalBase(BaseModel):
     estimated_impact: str
     status: ProposalStatus = "pending"
 
+    # Sequence of data checks the AI performed to arrive at this proposal
+    data_trail: list[str] = Field(default_factory=list)
+
 
 # ── Subtypes ────────────────────────────────────────────────────────────
 
@@ -46,6 +49,8 @@ class PriceChangeProposal(ProposalBase):
     type: Literal["price_change"] = "price_change"
     current_price: float
     proposed_price: float
+    # Last 30 days of daily unit sales (for sparkline chart)
+    sparkline_data: list[int] = Field(default_factory=list)
 
 
 class CopyRewriteProposal(ProposalBase):
@@ -62,6 +67,8 @@ class BundleSuggestionProposal(ProposalBase):
     type: Literal["bundle_suggestion"] = "bundle_suggestion"
     products: list[str]
     discount_percent: float
+    # Percentage of orders containing any one product that also contain another
+    co_purchase_pct: float = 0.0
 
 
 # ── Discriminated union ─────────────────────────────────────────────────

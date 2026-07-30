@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routes import health, products, proposals
+from app.routes import health, products, proposals, results
 
 
 @asynccontextmanager
@@ -41,3 +41,4 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(products.router, prefix="/api/v1")
 app.include_router(proposals.router, prefix="/api")
+app.include_router(results.router, prefix="/api")
