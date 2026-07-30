@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 # ── Confidence & Status literals ────────────────────────────────────────
 
 Confidence = Literal["low", "medium", "high"]
-ProposalStatus = Literal["pending", "approved", "rejected"]
+ProposalStatus = Literal["pending", "approved", "rejected", "rolled_back"]
 ProposalType = Literal["price_change", "copy_rewrite", "bundle_suggestion"]
 
 
@@ -50,6 +50,7 @@ class PriceChangeProposal(ProposalBase):
     type: Literal["price_change"] = "price_change"
     current_price: float
     proposed_price: float
+    original_price: float | None = None
     # Last 30 days of daily unit sales (for sparkline chart)
     sparkline_data: list[int] = Field(default_factory=list)
 
@@ -60,6 +61,7 @@ class CopyRewriteProposal(ProposalBase):
     type: Literal["copy_rewrite"] = "copy_rewrite"
     current_copy: str
     proposed_copy: str
+    original_copy: str | None = None
 
 
 class BundleSuggestionProposal(ProposalBase):

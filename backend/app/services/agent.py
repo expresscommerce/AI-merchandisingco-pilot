@@ -39,6 +39,13 @@ def mark_product_as_approved(store_url: str, product_name: str) -> None:
     _APPROVED_PRODUCTS_BY_STORE[clean_key].add(product_name.lower().strip())
 
 
+def unmark_product_as_approved(store_url: str, product_name: str) -> None:
+    """Remove a product from the approved set for a store after rollback."""
+    clean_key = (store_url or "default").lower().strip()
+    if clean_key in _APPROVED_PRODUCTS_BY_STORE:
+        _APPROVED_PRODUCTS_BY_STORE[clean_key].discard(product_name.lower().strip())
+
+
 # ── Static Fallback Catalog Context ────────────────────────────────────────
 
 STATIC_CATEGORY_CONTEXT = {

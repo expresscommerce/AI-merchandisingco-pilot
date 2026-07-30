@@ -37,6 +37,7 @@ export default function ProposalsTab({
   onRetry,
   onApprove,
   onReject,
+  onRollback,
   recentlyApproved,
 }) {
   const [typeFilter, setTypeFilter] = useState('all');
@@ -145,11 +146,28 @@ export default function ProposalsTab({
           <span className="recently-approved__label">Recently approved</span>
           <div className="recently-approved__pills">
             {recentlyApproved.map((item) => (
-              <span key={item.id} className="approved-pill">
+              <span key={item.id} className="approved-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                   <path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 {item.product_name}
+                {onRollback && (
+                  <button
+                    onClick={() => onRollback(item.id)}
+                    title="Rollback this change"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--clr-muted)',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      padding: '0 2px',
+                      lineHeight: 1,
+                    }}
+                  >
+                    ↺
+                  </button>
+                )}
               </span>
             ))}
           </div>
@@ -211,6 +229,7 @@ export default function ProposalsTab({
               proposal={p}
               onApprove={onApprove}
               onReject={onReject}
+              onRollback={onRollback}
             />
           ))}
         </div>

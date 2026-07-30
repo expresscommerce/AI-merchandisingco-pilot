@@ -40,3 +40,12 @@ export async function rejectProposal(id) {
   if (!res.ok) throw new Error(`Failed to reject proposal (${res.status})`);
   return res.json();
 }
+
+export async function rollbackProposal(id, shop) {
+  const url = shop
+    ? `${API_BASE}/proposals/${id}/rollback?shop=${encodeURIComponent(shop)}`
+    : `${API_BASE}/proposals/${id}/rollback`;
+  const res = await fetch(url, { method: 'POST' });
+  if (!res.ok) throw new Error(`Failed to rollback proposal (${res.status})`);
+  return res.json();
+}

@@ -12,6 +12,7 @@ import {
   fetchResults,
   approveProposal,
   rejectProposal,
+  rollbackProposal,
 } from './api/proposals';
 import { getResultsForCategory } from './data/dummyResults';
 
@@ -110,6 +111,26 @@ function Dashboard({ session, onLogout, initialToast }) {
     }
   }, []);
 
+  /* ── Rollback proposal ────────────────────────────────────────── */
+
+  const handleRollback = useCallback(async (id) => {
+    setProposals((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, status: 'pending' } : p))
+    );
+    try {
+      await rollbackProposal(id, session?.storeName);
+      setRecentlyApproved((prev) => prev.filter((item) => item.id !== id));
+      await loadResults();
+      await loadProposals();
+      setToast('Proposal rolled back — original store state restored.');
+    } catch {
+      setProposals((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, status: 'approved' } : p))
+      );
+      setToast('Failed to rollback proposal — please try again.');
+    }
+  }, [session?.storeName, loadResults, loadProposals]);
+
   /* ── Stats ────────────────────────────────────────────────────── */
 
   const pending = proposals.filter((p) => p.status === 'pending');
@@ -187,6 +208,7 @@ function Dashboard({ session, onLogout, initialToast }) {
             onRetry={loadProposals}
             onApprove={handleApprove}
             onReject={handleReject}
+            onRollback={handleRollback}
             recentlyApproved={recentlyApproved}
           />
         )}

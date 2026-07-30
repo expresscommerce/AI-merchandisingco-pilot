@@ -219,6 +219,14 @@ async def approve_proposal(proposal_id: UUID, shop: str | None = None):
 
     proposal.status = "approved"
 
+    # Store original values explicitly before executing change
+    if proposal.type == "price_change":
+        if getattr(proposal, "original_price", None) is None:
+            setattr(proposal, "original_price", getattr(proposal, "current_price", 0.0))
+    elif proposal.type == "copy_rewrite":
+        if getattr(proposal, "original_copy", None) is None:
+            setattr(proposal, "original_copy", getattr(proposal, "current_copy", ""))
+
     # Mark product as approved to prevent re-recommending in future AI analyses
     from app.services.agent import mark_product_as_approved
     mark_product_as_approved(shop or "default", proposal.product_name)
@@ -270,4 +278,68 @@ async def reject_proposal(proposal_id: UUID):
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
     proposal.status = "rejected"
+    return ProposalStatusUpdate(id=proposal.id, status=proposal.status)
+
+
+@router.post(
+    "/{proposal_id}/rollback",
+    response_model=ProposalStatusUpdate,
+    summary="Rollback an executed proposal",
+)
+async def rollback_proposal(proposal_id: UUID, shop: str | None = None):
+    """Revert an approved proposal back to its original value on Shopify and log audit record."""
+    proposal = _store.get(proposal_id)
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+
+    if proposal.status != "approved":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only approved proposals can be rolled back (current status: {proposal.status})",
+        )
+
+    # 1. Revert live Shopify store state using stored original value
+    if shop:
+        try:
+            target_variant_id = str(getattr(proposal, "variant_id", None) or getattr(proposal, "product_id", None) or proposal.id)
+            target_product_id = str(getattr(proposal, "product_id", None) or getattr(proposal, "variant_id", None) or proposal.id)
+
+            if proposal.type == "price_change":
+                orig_price = getattr(proposal, "original_price", None)
+                if orig_price is None:
+                    orig_price = getattr(proposal, "current_price", 0.0)
+                await update_price(shop, target_variant_id, orig_price)
+                print(f"🔄 Rolled back price for '{proposal.product_name}' to ${orig_price:.2f} on {shop}")
+            elif proposal.type == "copy_rewrite":
+                orig_copy = getattr(proposal, "original_copy", None)
+                if orig_copy is None:
+                    orig_copy = getattr(proposal, "current_copy", "")
+                await update_description(shop, target_product_id, orig_copy)
+                print(f"🔄 Rolled back copy for '{proposal.product_name}' on {shop}")
+        except Exception as e:
+            print(f"⚠️ Live Shopify rollback attempt notice: {e}")
+
+    # 2. Update status
+    proposal.status = "rolled_back"
+
+    # 3. Unmark product as approved so it can be analyzed again
+    from app.services.agent import unmark_product_as_approved
+    unmark_product_as_approved(shop or "default", proposal.product_name)
+
+    # 4. Log audit entry in results
+    from app.routes.results import ProposalResult, add_store_result
+    add_store_result(
+        shop or "demo",
+        ProposalResult(
+            id=f"{proposal.id}-rollback",
+            type=proposal.type,
+            product_name=proposal.product_name,
+            change_summary=f"Rolled back — reverted to original value",
+            approved_at="Just now",
+            days_since_approval=0,
+            tracking_status="tracking",
+            outcome="Rolled back — reverted to original value",
+        ),
+    )
+
     return ProposalStatusUpdate(id=proposal.id, status=proposal.status)

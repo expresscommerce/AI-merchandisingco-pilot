@@ -128,9 +128,10 @@ function DataTrail({ steps }) {
 
 /* ── Main Card ────────────────────────────────────────────────────────── */
 
-export default function ProposalCard({ proposal, onApprove, onReject }) {
+export default function ProposalCard({ proposal, onApprove, onReject, onRollback }) {
   const [expanded, setExpanded] = useState(false);
   const [acting, setActing] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const {
     id, type, product_name, reasoning, confidence,
@@ -156,14 +157,33 @@ export default function ProposalCard({ proposal, onApprove, onReject }) {
     try { await onReject(id); } finally { setActing(null); }
   }, [id, onReject]);
 
+  const handleConfirmRollback = useCallback(async () => {
+    setShowConfirm(false);
+    setActing('rollback');
+    try {
+      if (onRollback) await onRollback(id);
+    } finally {
+      setActing(null);
+    }
+  }, [id, onRollback]);
+
   const isApproved = status === 'approved';
   const isRejected = status === 'rejected';
   const isPending = status === 'pending';
+  const isRolledBack = status === 'rolled_back';
+
+  const symbol = estimated_impact?.match(/(Rs\.|PKR|CA\$|A\$|€|£|₹|\$|AED|SAR)/)?.[0] || '$';
+  const revertText = type === 'price_change'
+    ? `Revert price for "${product_name}" back to ${symbol}${current_price}?`
+    : type === 'copy_rewrite'
+    ? `Revert description for "${product_name}" back to original copy?`
+    : `Revert proposal for "${product_name}"?`;
 
   const cls = [
     'card',
     isApproved && 'card--approved',
     isRejected && 'card--rejected',
+    isRolledBack && 'card--rolled-back',
   ].filter(Boolean).join(' ');
 
   return (
@@ -184,19 +204,16 @@ export default function ProposalCard({ proposal, onApprove, onReject }) {
       </p>
 
       {/* ── Type-specific sections ──────────────────────────────── */}
-      {type === 'price_change' && (() => {
-        const symbol = estimated_impact?.match(/(Rs\.|PKR|CA\$|A\$|€|£|₹|\$|AED|SAR)/)?.[0] || '$';
-        return (
-          <>
-            <div className="card__price-row">
-              <span className="price-old">{symbol}{current_price?.toLocaleString()}</span>
-              <span className="price-arrow" aria-hidden="true">→</span>
-              <span className="price-new">{symbol}{proposed_price?.toLocaleString()}</span>
-            </div>
-            <Sparkline data={sparkline_data} />
-          </>
-        );
-      })()}
+      {type === 'price_change' && (
+        <>
+          <div className="card__price-row">
+            <span className="price-old">{symbol}{current_price?.toLocaleString()}</span>
+            <span className="price-arrow" aria-hidden="true">→</span>
+            <span className="price-new">{symbol}{proposed_price?.toLocaleString()}</span>
+          </div>
+          <Sparkline data={sparkline_data} />
+        </>
+      )}
 
       {type === 'copy_rewrite' && (
         <div className="card__copy-diff">
@@ -238,13 +255,21 @@ export default function ProposalCard({ proposal, onApprove, onReject }) {
 
       {/* Actions */}
       {isApproved ? (
-        <div className="card__resolved">
+        <div className="card__resolved" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
           <span className="resolved-badge">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
               <path d="M3 7.5L5.5 10L11 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             Approved
           </span>
+          <button
+            className="btn btn--ghost btn--small"
+            style={{ fontSize: '0.75rem', padding: '4px 10px', opacity: 0.85 }}
+            onClick={() => setShowConfirm(true)}
+            disabled={acting !== null}
+          >
+            {acting === 'rollback' ? <><Spinner /> Rolling back…</> : '↺ Rollback'}
+          </button>
         </div>
       ) : isPending ? (
         <div className="card__actions">
@@ -256,6 +281,44 @@ export default function ProposalCard({ proposal, onApprove, onReject }) {
           </button>
         </div>
       ) : null}
+
+      {/* Rollback Confirmation Dialog Overlay */}
+      {showConfirm && (
+        <div className="confirm-modal-overlay" style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justify: 'center',
+          padding: '16px',
+          borderRadius: '12px',
+          zIndex: 10,
+          textAlign: 'center',
+        }}>
+          <p style={{ fontSize: '0.875rem', color: '#f8fafc', fontWeight: 600, marginBottom: '12px' }}>
+            {revertText}
+          </p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              className="btn btn--primary"
+              style={{ fontSize: '0.8rem', padding: '6px 14px' }}
+              onClick={handleConfirmRollback}
+            >
+              Yes, Revert
+            </button>
+            <button
+              className="btn btn--ghost"
+              style={{ fontSize: '0.8rem', padding: '6px 14px' }}
+              onClick={() => setShowConfirm(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </article>
   );
 }
