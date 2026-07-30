@@ -1,8 +1,8 @@
 """
-Shopify Public Catalog Scraper.
+Shopify Public Catalog Scraper & Currency Detector.
 
-Fetches real product titles, prices, descriptions, and metadata from any public
-Shopify store via its standard `/products.json` endpoint.
+Fetches real product titles, prices, descriptions, and currency metadata from any public
+Shopify store via its standard `/products.json` and `/cart.json` endpoints.
 """
 
 from __future__ import annotations
@@ -11,26 +11,60 @@ import re
 from typing import Any
 import httpx
 
+CURRENCY_SYMBOL_MAP = {
+    "PKR": "Rs.",
+    "USD": "$",
+    "EUR": "€",
+    "GBP": "£",
+    "CAD": "CA$",
+    "AUD": "A$",
+    "INR": "₹",
+    "AED": "AED ",
+    "SAR": "SAR ",
+}
+
 
 def normalize_store_url(input_url: str) -> str:
     """Clean user input into a valid store base URL."""
     url = input_url.strip().lower()
-    # Remove protocol
     url = re.sub(r"^https?://", "", url)
-    # Remove trailing slash and path
     url = url.split("/")[0]
 
-    # If simple name without dot (e.g., "gymshark"), append .myshopify.com
     if "." not in url:
         url = f"{url}.myshopify.com"
 
     return f"https://{url}"
 
 
+def fetch_store_currency(base_url: str) -> tuple[str, str]:
+    """Fetch store currency code and symbol from /cart.json."""
+    cart_url = f"{base_url}/cart.json"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept": "application/json",
+    }
+    try:
+        with httpx.Client(timeout=5.0, follow_redirects=True) as client:
+            resp = client.get(cart_url, headers=headers)
+        if resp.status_code == 200:
+            data = resp.json()
+            code = data.get("currency", "USD").upper()
+            symbol = CURRENCY_SYMBOL_MAP.get(code, f"{code} ")
+            print(f"💱 Detected store currency: {code} ({symbol})")
+            return code, symbol
+    except Exception as e:
+        print(f"⚠️ Currency lookup fallback: {e}")
+    return "USD", "$"
+
+
 def fetch_shopify_store_products(store_url_or_handle: str, limit: int = 8) -> list[dict[str, Any]]:
-    """Fetch public products from any live Shopify store via products.json."""
+    """Fetch public products & currency from any live Shopify store."""
     base_url = normalize_store_url(store_url_or_handle)
     target_url = f"{base_url}/products.json?limit={limit}"
+    currency_code, currency_symbol = fetch_store_currency(base_url)
 
     headers = {
         "User-Agent": (
@@ -56,7 +90,6 @@ def fetch_shopify_store_products(store_url_or_handle: str, limit: int = 8) -> li
         for p in raw_products[:limit]:
             title = p.get("title", "")
             body_html = p.get("body_html", "") or ""
-            # Strip simple HTML tags from description
             clean_desc = re.sub(r"<[^>]+>", " ", body_html).strip()
             clean_desc = re.sub(r"\s+", " ", clean_desc)[:200]
 
@@ -70,9 +103,11 @@ def fetch_shopify_store_products(store_url_or_handle: str, limit: int = 8) -> li
                 "current_price": price,
                 "current_copy": clean_desc or title,
                 "vendor": p.get("vendor", ""),
+                "currency_code": currency_code,
+                "currency_symbol": currency_symbol,
             })
 
-        print(f"✅ Successfully fetched {len(parsed_products)} live products from {base_url}!")
+        print(f"✅ Successfully fetched {len(parsed_products)} live products from {base_url} ({currency_symbol})!")
         return parsed_products
 
     except Exception as e:

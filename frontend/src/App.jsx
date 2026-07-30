@@ -111,9 +111,14 @@ function Dashboard({ session, onLogout, initialToast }) {
 
   const pending = proposals.filter((p) => p.status === 'pending');
   const highConf = pending.filter((p) => p.confidence === 'high');
+  const currencySymbol = pending[0]?.estimated_impact?.match(/(Rs\.|PKR|CA\$|A\$|€|£|₹|\$|AED|SAR)/)?.[0] || '$';
+
   const totalImpact = pending.reduce((sum, p) => {
-    const m = p.estimated_impact.match(/\$[\d,]+/);
-    if (m) return sum + parseFloat(m[0].replace(/[$,]/g, ''));
+    const m = p.estimated_impact.match(/[\d,]+\.?\d*/);
+    if (m) {
+      const num = parseFloat(m[0].replace(/,/g, ''));
+      return sum + (isNaN(num) ? 0 : num);
+    }
     return sum;
   }, 0);
 
@@ -146,6 +151,7 @@ function Dashboard({ session, onLogout, initialToast }) {
           totalImpact={totalImpact}
           pendingCount={pending.length}
           highConfCount={highConf.length}
+          currencySymbol={currencySymbol}
         />
 
         <nav className="tab-bar" role="tablist" aria-label="Dashboard views">

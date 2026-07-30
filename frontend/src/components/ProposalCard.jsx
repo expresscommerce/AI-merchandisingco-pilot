@@ -184,16 +184,19 @@ export default function ProposalCard({ proposal, onApprove, onReject }) {
       </p>
 
       {/* ── Type-specific sections ──────────────────────────────── */}
-      {type === 'price_change' && (
-        <>
-          <div className="card__price-row">
-            <span className="price-old">${current_price?.toFixed(2)}</span>
-            <span className="price-arrow" aria-hidden="true">→</span>
-            <span className="price-new">${proposed_price?.toFixed(2)}</span>
-          </div>
-          <Sparkline data={sparkline_data} />
-        </>
-      )}
+      {type === 'price_change' && (() => {
+        const symbol = estimated_impact?.match(/(Rs\.|PKR|CA\$|A\$|€|£|₹|\$|AED|SAR)/)?.[0] || '$';
+        return (
+          <>
+            <div className="card__price-row">
+              <span className="price-old">{symbol}{current_price?.toLocaleString()}</span>
+              <span className="price-arrow" aria-hidden="true">→</span>
+              <span className="price-new">{symbol}{proposed_price?.toLocaleString()}</span>
+            </div>
+            <Sparkline data={sparkline_data} />
+          </>
+        );
+      })()}
 
       {type === 'copy_rewrite' && (
         <div className="card__copy-diff">

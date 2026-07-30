@@ -4,10 +4,10 @@
  * Shows: total potential impact, pending count, high-confidence count.
  */
 
-export default function SummaryBar({ totalImpact, pendingCount, highConfCount }) {
+export default function SummaryBar({ totalImpact, pendingCount, highConfCount, currencySymbol = '$' }) {
   const formatted = totalImpact >= 1000
-    ? `$${(totalImpact / 1000).toFixed(1)}k`
-    : `$${totalImpact.toLocaleString()}`;
+    ? `${currencySymbol}${(totalImpact / 1000).toFixed(1)}k`
+    : `${currencySymbol}${totalImpact.toLocaleString()}`;
 
   return (
     <div className="summary-bar">

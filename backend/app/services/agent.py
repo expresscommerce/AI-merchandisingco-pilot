@@ -106,15 +106,19 @@ def generate_live_llm_proposals(category: str, store_url: str | None = None) -> 
     if store_url:
         scraped_products = fetch_shopify_store_products(store_url)
 
+    currency_symbol = "$"
     if scraped_products:
-        print(f"🛍️ Using live scraped store data from '{store_url}' ({len(scraped_products)} SKUs)")
+        currency_symbol = scraped_products[0].get("currency_symbol", "$")
+        print(f"🛍️ Using live scraped store data from '{store_url}' ({len(scraped_products)} SKUs, Currency: {currency_symbol})")
         catalog_context = scraped_products
     else:
         cat_key = category.lower().replace(" & ", "_").replace(" ", "_")
         catalog_context = STATIC_CATEGORY_CONTEXT.get(cat_key, STATIC_CATEGORY_CONTEXT["home_kitchen"])
 
     prompt = f"""You are an expert AI Merchandising Assistant for an e-commerce platform.
-Analyze the following catalog data for store '{store_url or category}' and generate 3 proposals:
+Analyze the following catalog data for store '{store_url or category}' and generate 3 proposals.
+IMPORTANT CURRENCY INSTRUCTION: The store's currency symbol is '{currency_symbol}'. Format all estimated_impact strings using '{currency_symbol}' (e.g., '+{currency_symbol}4,200/mo revenue' or '+{currency_symbol}12.50 AOV').
+
 1. A price_change proposal suggesting an optimized new price (recovering sales velocity or maximizing margin).
 2. A copy_rewrite proposal with a compelling, conversion-optimized product description.
 3. A bundle_suggestion proposal bundling complementary items to boost AOV.
@@ -129,7 +133,7 @@ Output ONLY a JSON array containing 3 objects with exact schema:
     "product_name": str,
     "reasoning": str,
     "confidence": "high"|"medium"|"low",
-    "estimated_impact": str (e.g. "+$4,200/mo revenue"),
+    "estimated_impact": str (formatted using '{currency_symbol}'),
     "current_price": float,
     "proposed_price": float,
     "sparkline_data": [int, ...],
@@ -140,7 +144,7 @@ Output ONLY a JSON array containing 3 objects with exact schema:
     "product_name": str,
     "reasoning": str,
     "confidence": "high"|"medium"|"low",
-    "estimated_impact": str (e.g. "+$1,800/mo uplift"),
+    "estimated_impact": str (formatted using '{currency_symbol}'),
     "current_copy": str,
     "proposed_copy": str,
     "data_trail": [str, ...]
@@ -150,7 +154,7 @@ Output ONLY a JSON array containing 3 objects with exact schema:
     "product_name": str,
     "reasoning": str,
     "confidence": "high"|"medium"|"low",
-    "estimated_impact": str (e.g. "+$12.50 AOV"),
+    "estimated_impact": str (formatted using '{currency_symbol}'),
     "products": [str, ...],
     "discount_percent": float,
     "co_purchase_pct": float,
