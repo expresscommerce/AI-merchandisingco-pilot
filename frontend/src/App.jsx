@@ -14,7 +14,7 @@ import {
   rejectProposal,
   rollbackProposal,
 } from './api/proposals';
-import { getResultsForCategory } from './data/dummyResults';
+import CopilotDrawer from './components/CopilotDrawer';
 
 const COLLAPSE_MS = 450;
 
@@ -222,6 +222,33 @@ function Dashboard({ session, onLogout, initialToast }) {
           />
         )}
       </main>
+
+      <CopilotDrawer
+        storeName={session?.storeName}
+        category={session?.category}
+        onAddProposal={(sugProp) => {
+          const newProposal = {
+            id: crypto.randomUUID(),
+            status: 'pending',
+            product_name: sugProp.product_name || 'AI Recommended Product',
+            reasoning: sugProp.reasoning || 'AI Copilot generated strategy recommendation.',
+            confidence: sugProp.confidence || 'high',
+            estimated_impact: sugProp.estimated_impact || '+$500/mo revenue',
+            type: sugProp.type || 'price_change',
+            current_price: sugProp.current_price || 99.99,
+            proposed_price: sugProp.proposed_price || 89.99,
+            current_copy: sugProp.current_copy || '',
+            proposed_copy: sugProp.proposed_copy || '',
+            products: sugProp.products || [],
+            discount_percent: sugProp.discount_percent || 15.0,
+            co_purchase_pct: sugProp.co_purchase_pct || 25.0,
+            data_trail: ['Generated via AI Merchandising Copilot Assistant'],
+            sparkline_data: [4, 5, 3, 6, 7, 5, 4, 3, 5, 6, 4, 3, 2, 4, 5],
+          };
+          setProposals((prev) => [newProposal, ...prev]);
+          setToast(`Proposal added for "${newProposal.product_name}"!`);
+        }}
+      />
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
