@@ -257,6 +257,8 @@ Do NOT return extra text outside JSON.
                     item["product_id"] = str(matched_prod["id"])
                 if matched_prod.get("variant_id"):
                     item["variant_id"] = str(matched_prod["variant_id"])
+                if matched_prod.get("image_url"):
+                    item["image_url"] = matched_prod.get("image_url")
 
             if t == "price_change":
                 raw_sparkline = item.get("sparkline_data")

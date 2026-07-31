@@ -32,6 +32,7 @@ class ProposalBase(BaseModel):
     product_id: str | None = None
     variant_id: str | None = None
     product_name: str
+    image_url: str | None = None
     reasoning: str
     confidence: Confidence
     estimated_impact: str
