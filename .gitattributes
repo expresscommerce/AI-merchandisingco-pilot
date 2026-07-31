@@ -1,0 +1,9 @@
+# GitHub Linguist Configuration
+# Mark frontend JavaScript, JSX, and CSS files as documentation/vendored
+# so Python is detected as the primary language for this repository.
+
+frontend/** linguist-documentation
+*.js linguist-documentation
+*.jsx linguist-documentation
+*.css linguist-documentation
+package-lock.json linguist-vendored
