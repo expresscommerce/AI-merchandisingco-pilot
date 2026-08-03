@@ -2385,5 +2385,660 @@ ul { list-style: none; }
   margin-top: 8px;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   MERCHANDISING CO-PILOT — UI REDESIGN STYLES (MATCHING REFERENCE IMAGE)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── App Header Extensions ───────────────────────────────────────────── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.status-badge__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+.status-badge__text {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.status-badge__divider {
+  color: #cbd5e1;
+}
+
+.status-badge__store {
+  color: #334155;
+  font-weight: 500;
+}
+
+.btn-user-menu {
+  background: transparent;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.btn-user-menu:hover {
+  background: #f1f5f9;
+}
+
+
+/* ── 3-Card KPI Summary Bar Grid ─────────────────────────────────────── */
+.summary-cards-grid {
+  display: grid;
+  grid-template-columns: 2.2fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  border-radius: 10px;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.summary-card--revenue {
+  background: #1e2440;
+  color: #ffffff;
+}
+
+.summary-card--pending {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.summary-card--confidence {
+  background: #e6f4ea;
+  color: #166534;
+}
+
+.summary-card__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  opacity: 0.85;
+}
+
+.summary-card--revenue .summary-card__label {
+  color: #cbd5e1;
+}
+
+.summary-card__metric {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.summary-card__metric--light {
+  color: #ffffff;
+}
+
+.summary-card__unit {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.summary-card__metric-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.summary-card__metric--green {
+  color: #166534;
+}
+
+.summary-card__check-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+/* ── Filter / Sort Toolbar ───────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: capitalize;
+}
+
+.pill-btn {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pill-btn:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.pill-btn--active {
+  background: #1e2440 !important;
+  color: #ffffff !important;
+  border-color: #1e2440 !important;
+}
+
+.toolbar__right {
+  display: flex;
+  align-items: center;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 10px;
+  width: 180px;
+}
+
+.search-icon {
+  margin-right: 6px;
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.78rem;
+  width: 100%;
+  color: #1e293b;
+}
+
+
+/* ── Proposal Cards Grid & ProposalCard Visuals ────────────────────────── */
+.proposal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  align-items: stretch; /* Stretch all cards to same height */
+}
+
+@media (max-width: 1024px) {
+  .proposal-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .proposal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.proposal-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Keeps top content top-aligned and actions bottom-aligned */
+  height: 100%; /* Uniform height */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.proposal-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.proposal-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.proposal-card__type {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.impact-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.impact-badge--high {
+  background: #fef08a;
+  color: #854d0e;
+}
+
+.impact-badge--medium {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.impact-badge--low {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.proposal-card__title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+  margin-bottom: 14px;
+  min-height: 2.5em; /* Ensure consistent title space */
+}
+
+
+/* Sub-Visual Areas */
+.proposal-card__visual {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+  height: 130px; /* Fixed consistent height for visual container across ALL cards */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* Bundle Visual & Product Pictures */
+.bundle-icons-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.bundle-item-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bundle-item-box {
+  width: 52px;
+  height: 52px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+
+.bundle-product-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.bundle-plus {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+/* Copy Diff Visual */
+.copy-diff-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+}
+
+.diff-box {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  overflow-y: auto;
+}
+
+.diff-box--old {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.diff-box--new {
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+}
+
+.diff-box__label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.diff-box__text--strikethrough {
+  color: #64748b;
+  text-decoration: line-through;
+  text-decoration-color: #ef4444;
+}
+
+.diff-box__text--highlight {
+  color: #14532d;
+  font-weight: 600;
+}
+
+/* Reprice Visual & Interactive Range Slider */
+.reprice-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.price-chart-wrap {
+  display: flex;
+  gap: 8px;
+  height: 50px;
+}
+
+.price-chart-y {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  color: #94a3b8;
+  width: 32px;
+}
+
+.price-chart-svg-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.price-chart-svg {
+  width: 100%;
+  height: 36px;
+}
+
+.price-chart-x {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  color: #94a3b8;
+  padding: 0 4px;
+}
+
+.price-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.slider-value-preview {
+  color: #16a34a;
+  font-weight: 800;
+}
+
+.interactive-price-slider {
+  width: 100%;
+  height: 4px;
+  background: #cbd5e1;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  accent-color: #1e2440;
+}
+
+.price-change-values {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.price-val--old {
+  color: #64748b;
+}
+
+.price-val--new {
+  color: #0f172a;
+}
+
+.price-arrow {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+
+/* Preview Button */
+.store-preview-btn-wrap {
+  margin-bottom: 12px;
+}
+
+.btn-store-preview {
+  display: inline-flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-store-preview:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+
+/* Bullet points / Reasoning */
+.proposal-card__reasoning {
+  font-size: 0.78rem;
+  color: #475569;
+  line-height: 1.4;
+  margin-bottom: 14px;
+}
+
+.reasoning-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reasoning-bullets li {
+  font-size: 0.78rem;
+  color: #334155;
+}
+
+
+/* Impact Row */
+.proposal-card__impact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 16px;
+}
+
+.impact-amount {
+  color: #0f172a;
+}
+
+.impact-sep {
+  color: #cbd5e1;
+  font-weight: 400;
+}
+
+.impact-level {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.impact-level--high {
+  color: #16a34a;
+}
+
+.impact-level--medium {
+  color: #d97706;
+}
+
+.impact-level--low {
+  color: #65a30d;
+}
+
+
+/* Approve / Reject Buttons */
+.proposal-card__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn-card {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-card--approve {
+  background: #1e2440;
+  color: #ffffff;
+}
+
+.btn-card--approve:hover {
+  background: #111528;
+}
+
+.btn-card--reject {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.btn-card--reject:hover {
+  background: #cbd5e1;
+}
+
+
+/* ── Floating Copilot Assistant Button ───────────────────────────────── */
+.copilot-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1e2440;
+  color: #ffffff;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 18px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.copilot-fab:hover {
+  background: #111528;
+  transform: translateY(-2px);
+}
+
+
 
 

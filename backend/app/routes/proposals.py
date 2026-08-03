@@ -211,13 +211,21 @@ from app.services.shopify_client import update_description, update_price
     response_model=ProposalStatusUpdate,
     summary="Approve a proposal",
 )
-async def approve_proposal(proposal_id: UUID, shop: str | None = None):
+async def approve_proposal(
+    proposal_id: UUID,
+    shop: str | None = None,
+    proposed_price: float | None = None,
+):
     """Mark a proposal as approved and execute price/copy changes on Shopify if connected."""
     proposal = _store.get(proposal_id)
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
 
     proposal.status = "approved"
+
+    # Handle manual price override if user adjusted slider
+    if proposed_price is not None and proposal.type == "price_change":
+        setattr(proposal, "proposed_price", proposed_price)
 
     # Store original values explicitly before executing change
     if proposal.type == "price_change":

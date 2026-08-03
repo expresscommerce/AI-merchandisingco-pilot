@@ -133,7 +133,7 @@ export default function CopilotDrawer({ storeName, category, onAddProposal }) {
         aria-label="Open AI Merchandising Copilot"
       >
         <span className="copilot-fab-sparkle">✨</span>
-        <span className="copilot-fab-text">AI Copilot</span>
+        <span className="copilot-fab-text">Copilot Assistant</span>
         {messages.length > 0 && <span className="copilot-fab-badge" />}
       </button>
 

@@ -26,10 +26,12 @@ export async function fetchResults(storeUrl) {
   return res.json();
 }
 
-export async function approveProposal(id, shop) {
-  const url = shop
-    ? `${API_BASE}/proposals/${id}/approve?shop=${encodeURIComponent(shop)}`
-    : `${API_BASE}/proposals/${id}/approve`;
+export async function approveProposal(id, shop, proposedPrice) {
+  const params = new URLSearchParams();
+  if (shop) params.append('shop', shop);
+  if (proposedPrice != null) params.append('proposed_price', proposedPrice);
+
+  const url = `${API_BASE}/proposals/${id}/approve?${params.toString()}`;
   const res = await fetch(url, { method: 'POST' });
   if (!res.ok) throw new Error(`Failed to approve proposal (${res.status})`);
   return res.json();

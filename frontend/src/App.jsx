@@ -67,13 +67,13 @@ function Dashboard({ session, onLogout, initialToast }) {
 
   /* ── Optimistic approve ───────────────────────────────────────── */
 
-  const handleApprove = useCallback(async (id) => {
+  const handleApprove = useCallback(async (id, customPrice) => {
     const proposal = proposals.find((p) => p.id === id);
     setProposals((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: 'approved' } : p))
+      prev.map((p) => (p.id === id ? { ...p, status: 'approved', proposed_price: customPrice ?? p.proposed_price } : p))
     );
     try {
-      await approveProposal(id, session?.storeName);
+      await approveProposal(id, session?.storeName, customPrice);
       await loadResults();
       setTimeout(() => {
         if (proposal) {
@@ -153,18 +153,25 @@ function Dashboard({ session, onLogout, initialToast }) {
       <header className="app-header">
         <div className="app-header__inner">
           <span className="app-logo">
-            <span className="app-logo__icon" aria-hidden="true">◆</span>
+            <span className="app-logo__icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                <rect x="3" y="4" width="3" height="12" rx="1.5" />
+                <rect x="8.5" y="2" width="3" height="16" rx="1.5" />
+                <rect x="14" y="6" width="3" height="10" rx="1.5" />
+              </svg>
+            </span>
             Merchandising Co-Pilot
           </span>
 
           <div className="app-header__right">
-            <span className="app-header__store">
-              <span className="store-dot" aria-hidden="true" />
-              {session.storeName}
-              {session.isDemo && <span className="demo-badge">Demo</span>}
-            </span>
-            <button className="btn-logout" onClick={onLogout}>
-              Log out
+            <div className="status-badge">
+              <span className="status-badge__dot" />
+              <span className="status-badge__text">Active</span>
+              <span className="status-badge__divider">|</span>
+              <span className="status-badge__store">{session.storeName}</span>
+            </div>
+            <button className="btn-user-menu" onClick={onLogout}>
+              User Settings / Log out ▾
             </button>
           </div>
         </div>

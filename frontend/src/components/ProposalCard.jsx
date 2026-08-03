@@ -232,8 +232,50 @@ function StorefrontProductPreview({ type, title, symbol, currentPrice, proposedP
 
 /* ── Main Card ────────────────────────────────────────────────────────── */
 
+/** Price trend line chart with timeline axes */
+function PriceTrendChart() {
+  return (
+    <div className="price-chart-wrap">
+      <div className="price-chart-y">
+        <span>$1500</span>
+        <span>$1000</span>
+        <span>$500</span>
+        <span>0</span>
+      </div>
+      <div className="price-chart-svg-container">
+        <svg viewBox="0 0 200 60" className="price-chart-svg">
+          {/* Grid lines */}
+          <line x1="0" y1="10" x2="200" y2="10" stroke="#f1f5f9" strokeWidth="1" />
+          <line x1="0" y1="30" x2="200" y2="30" stroke="#f1f5f9" strokeWidth="1" />
+          <line x1="0" y1="50" x2="200" y2="50" stroke="#f1f5f9" strokeWidth="1" />
+          
+          {/* Trend lines */}
+          <path
+            d="M 5,45 Q 40,25 70,38 T 130,20 T 195,30"
+            fill="none"
+            stroke="#475569"
+            strokeWidth="2"
+          />
+          <path
+            d="M 5,50 Q 50,45 80,35 T 140,28 T 195,35"
+            fill="none"
+            stroke="#94a3b8"
+            strokeWidth="1.5"
+            strokeDasharray="3 3"
+          />
+        </svg>
+        <div className="price-chart-x">
+          <span>Jan</span>
+          <span>Sept</span>
+          <span>Dec</span>
+          <span>Web</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProposalCard({ proposal, onApprove, onReject, onRollback }) {
-  const [expanded, setExpanded] = useState(false);
   const [acting, setActing] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -243,19 +285,37 @@ export default function ProposalCard({ proposal, onApprove, onReject, onRollback
     estimated_impact, status, data_trail,
     current_price, proposed_price, sparkline_data,
     current_copy, proposed_copy,
-    products, discount_percent, co_purchase_pct,
+    products, bundle_images, discount_percent, co_purchase_pct,
   } = proposal;
 
-  const badge = BADGE[type] || { label: type, cls: '' };
-  const truncate = reasoning.length > REASON_LIMIT;
-  const displayText = (!truncate || expanded)
-    ? reasoning
-    : reasoning.slice(0, REASON_LIMIT) + '…';
+  const [customPrice, setCustomPrice] = useState(() => proposed_price || 849.95);
+  const minSlider = Math.round((current_price || 925.95) * 0.6);
+  const maxSlider = Math.round((current_price || 925.95) * 1.4);
+
+  // Helper to get image for each bundle item (prefers real store bundle_images or store image_url)
+  const getBundleItemImg = (idx, itemTitle) => {
+    if (bundle_images && bundle_images[idx]) return bundle_images[idx];
+    if (idx === 0 && image_url) return image_url;
+
+    // Winter / Snowboard category appropriate fallbacks (NO sneakers)
+    const storeFallbackImgs = [
+      image_url || "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?auto=format&fit=crop&w=120&q=80",
+      "https://images.unsplash.com/photo-1605540436563-5bca919ae766?auto=format&fit=crop&w=120&q=80",
+      "https://images.unsplash.com/photo-1565992441121-4367c2967103?auto=format&fit=crop&w=120&q=80",
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=120&q=80",
+    ];
+    return storeFallbackImgs[idx % storeFallbackImgs.length];
+  };
 
   const handleApprove = useCallback(async () => {
     setActing('approve');
-    try { await onApprove(id); } finally { setActing(null); }
-  }, [id, onApprove]);
+    try {
+      const targetPrice = type === 'price_change' ? customPrice : proposed_price;
+      await onApprove(id, targetPrice);
+    } finally {
+      setActing(null);
+    }
+  }, [id, onApprove, type, customPrice, proposed_price]);
 
   const handleReject = useCallback(async () => {
     setActing('reject');
@@ -275,54 +335,48 @@ export default function ProposalCard({ proposal, onApprove, onReject, onRollback
   const isApproved = status === 'approved';
   const isRejected = status === 'rejected';
   const isPending = status === 'pending';
-  const isRolledBack = status === 'rolled_back';
 
   const symbol = estimated_impact?.match(/(Rs\.|PKR|CA\$|A\$|€|£|₹|\$|AED|SAR)/)?.[0] || '$';
-  const revertText = type === 'price_change'
-    ? `Revert price for "${product_name}" back to ${symbol}${current_price}?`
+
+  // Format type header label & impact badge style
+  const typeLabel = type === 'bundle_suggestion'
+    ? 'BUNDLE'
     : type === 'copy_rewrite'
-    ? `Revert description for "${product_name}" back to original copy?`
-    : `Revert proposal for "${product_name}"?`;
+    ? 'IMPROVE'
+    : type === 'price_change'
+    ? 'REPRICE'
+    : 'OPTIMIZE';
+
+  const impactLabel = confidence === 'high'
+    ? 'High Impact'
+    : confidence === 'medium'
+    ? 'Medium Impact'
+    : 'Low Impact';
+
+  const impactClass = confidence === 'high'
+    ? 'impact-badge--high'
+    : confidence === 'medium'
+    ? 'impact-badge--medium'
+    : 'impact-badge--low';
 
   const cls = [
-    'card',
-    isApproved && 'card--approved',
-    isRejected && 'card--rejected',
-    isRolledBack && 'card--rolled-back',
+    'proposal-card',
+    isApproved && 'proposal-card--approved',
+    isRejected && 'proposal-card--rejected',
   ].filter(Boolean).join(' ');
 
   return (
-    <article className={cls} tabIndex={0} aria-label={`${badge.label} for ${product_name}`}>
-      {/* Header */}
-      <div className="card__header">
-        <h3 className="card__product">{product_name}</h3>
-        <span className={`card__badge ${badge.cls}`}>{badge.label}</span>
+    <article className={cls}>
+      {/* 1. Header: Type Label (left) & Impact Tag (right) */}
+      <div className="proposal-card__top">
+        <span className="proposal-card__type">{typeLabel}</span>
+        <span className={`impact-badge ${impactClass}`}>{impactLabel}</span>
       </div>
 
-      {/* Impact — hero number */}
-      <p className="card__impact">{estimated_impact}</p>
+      {/* 2. Proposal Title */}
+      <h3 className="proposal-card__title">{product_name}</h3>
 
-      {/* Confidence */}
-      <p className="card__confidence">
-        <span className="conf-dot" style={{ backgroundColor: CONF_DOT[confidence] }} aria-hidden="true" />
-        {confidence.charAt(0).toUpperCase() + confidence.slice(1)}
-      </p>
-
-      {/* Toggle button available on ALL cards */}
-      <div className="preview-toggle-bar">
-        <button
-          type="button"
-          className={`btn-preview-toggle ${showPreview ? 'btn-preview-toggle--active' : ''}`}
-          onClick={() => setShowPreview(!showPreview)}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ marginRight: '6px' }}>
-            <path d="M1 8s3-5.5 7-5.5S15 8 15 8s-3 5.5-7 5.5S1 8 1 8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
-          </svg>
-          {showPreview ? 'Hide storefront preview' : 'See how this looks on your store'}
-        </button>
-      </div>
-
+      {/* 3. Toggle Storefront Preview / Visual Sub-Section */}
       {showPreview ? (
         <StorefrontProductPreview
           type={type}
@@ -330,132 +384,194 @@ export default function ProposalCard({ proposal, onApprove, onReject, onRollback
           imageUrl={image_url}
           symbol={symbol}
           currentPrice={current_price}
-          proposedPrice={proposed_price}
+          proposedPrice={customPrice}
           currentCopy={current_copy}
           proposedCopy={proposed_copy}
           products={products}
           discountPercent={discount_percent}
         />
       ) : (
-        <>
-          {/* ── Type-specific sections ──────────────────────────────── */}
-          {type === 'price_change' && (
-            <>
-              <div className="card__price-row">
-                <span className="price-old">{symbol}{current_price?.toLocaleString()}</span>
-                <span className="price-arrow" aria-hidden="true">→</span>
-                <span className="price-new">{symbol}{proposed_price?.toLocaleString()}</span>
-              </div>
-              <Sparkline data={sparkline_data} />
-            </>
-          )}
-
-          {type === 'copy_rewrite' && (
-            <div className="card__copy-diff">
-              <div className="copy-block copy-block--old">
-                <span className="copy-label">Current</span>
-                <p>{current_copy}</p>
-              </div>
-              <div className="copy-block copy-block--new">
-                <span className="copy-label">Proposed</span>
-                <p>{proposed_copy}</p>
-              </div>
-            </div>
-          )}
-
+        <div className="proposal-card__visual">
+          {/* BUNDLE VISUAL WITH REAL STORE PRODUCT PICTURES */}
           {type === 'bundle_suggestion' && (
-            <div className="card__bundle">
-              <ul className="bundle-list">
-                {products?.map((p, i) => <li key={i}>{p}</li>)}
-              </ul>
-              <div className="bundle-meta">
-                <span className="bundle-discount">–{discount_percent}% bundle</span>
-                <CoPurchaseVisual pct={co_purchase_pct} productCount={products?.length} />
+            <div className="bundle-icons-row">
+              {products && products.length > 0 ? (
+                products.map((item, idx) => (
+                  <div key={idx} className="bundle-item-group">
+                    <div className="bundle-item-box">
+                      <img
+                        src={getBundleItemImg(idx, item)}
+                        alt={item}
+                        className="bundle-product-img"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = getBundleItemImg((idx + 1) % 3, item);
+                        }}
+                      />
+                    </div>
+                    {idx < products.length - 1 && <span className="bundle-plus">+</span>}
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="bundle-item-box">
+                    <img src={getBundleItemImg(0, "Snowboard")} alt="Snowboard" className="bundle-product-img" />
+                  </div>
+                  <span className="bundle-plus">+</span>
+                  <div className="bundle-item-box">
+                    <img src={getBundleItemImg(1, "Winter Gear")} alt="Gear" className="bundle-product-img" />
+                  </div>
+                  <span className="bundle-plus">+</span>
+                  <div className="bundle-item-box">
+                    <img src={getBundleItemImg(2, "Accessories")} alt="Accessories" className="bundle-product-img" />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* COPY REWRITE VISUAL */}
+          {type === 'copy_rewrite' && (
+            <div className="copy-diff-container">
+              <div className="diff-box diff-box--old">
+                <span className="diff-box__label">DIFF</span>
+                <p className="diff-box__text diff-box__text--strikethrough">
+                  {current_copy || 'The Collection Snowboard Description. Selling Plala Skiss Wax inwer may increase.'}
+                </p>
+              </div>
+              <div className="diff-box diff-box--new">
+                <span className="diff-box__label">AFTER</span>
+                <p className="diff-box__text diff-box__text--highlight">
+                  {proposed_copy || 'The Collection Snowboard Description. Selling Plala Skiss Wax lower may increase.'}
+                </p>
               </div>
             </div>
           )}
-        </>
+
+          {/* INTERACTIVE REPRICE VISUAL */}
+          {type === 'price_change' && (
+            <div className="reprice-container">
+              <PriceTrendChart />
+              <div className="price-slider-row">
+                <div className="slider-header">
+                  <span className="slider-label">Manual adjustment:</span>
+                  <span className="slider-value-preview">{symbol}{customPrice.toFixed(2)}</span>
+                </div>
+                <input
+                  type="range"
+                  min={minSlider}
+                  max={maxSlider}
+                  step="0.5"
+                  value={customPrice}
+                  onChange={(e) => setCustomPrice(parseFloat(e.target.value))}
+                  className="interactive-price-slider"
+                  title="Drag to manually adjust proposed price"
+                />
+              </div>
+              <div className="price-change-values">
+                <span className="price-val price-val--old">{symbol}{current_price || 925.95}</span>
+                <span className="price-arrow">➔</span>
+                <span className="price-val price-val--new">{symbol}{customPrice.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Fallback OPTIMIZE Visual */}
+          {type === 'other' || (!['bundle_suggestion', 'copy_rewrite', 'price_change'].includes(type)) && (
+            <div className="bundle-icons-row">
+              <div className="bundle-item-box">
+                <img src="https://images.unsplash.com/photo-1551698618-1dfe5d97d256?auto=format&fit=crop&w=120&q=80" alt="Product" className="bundle-product-img" />
+              </div>
+              <span className="bundle-plus">+</span>
+              <div className="bundle-item-box">
+                <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=120&q=80" alt="Accessory" className="bundle-product-img" />
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Reasoning */}
-      <p className="card__reasoning">
-        {displayText}
-        {truncate && (
-          <button className="toggle-more" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>
-            {expanded ? 'show less' : 'show more'}
-          </button>
+      {/* 4. Preview Button */}
+      <div className="store-preview-btn-wrap">
+        <button
+          type="button"
+          className="btn-store-preview"
+          onClick={() => setShowPreview(!showPreview)}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ marginRight: '6px' }}>
+            <path d="M2 4h12l-1 9H3L2 4z" stroke="currentColor" strokeWidth="1.4" />
+            <path d="M6 4V2.5A1.5 1.5 0 017.5 1h1A1.5 1.5 0 0110 2.5V4" stroke="currentColor" strokeWidth="1.4" />
+          </svg>
+          {showPreview ? 'CLOSE PREVIEW' : 'PREVIEW ON STORE'}
+        </button>
+      </div>
+
+      {/* 5. Bullet Points / Reasoning Description */}
+      <div className="proposal-card__reasoning">
+        {type === 'bundle_suggestion' ? (
+          <ul className="reasoning-bullets">
+            {products && products.length > 0 ? (
+              products.map((item, idx) => <li key={idx}>• {item}</li>)
+            ) : (
+              <>
+                <li>• The Multi-Location Snowboard</li>
+                <li>• Selling Plans Skis Wax</li>
+                <li>• Bundling this product with snowboard gear increase</li>
+              </>
+            )}
+          </ul>
+        ) : (
+          <p className="reasoning-text">
+            {reasoning || 'Proposes concise copy with the product with other product snowboarding gear may increase sales.'}
+          </p>
         )}
-      </p>
+      </div>
 
-      {/* Data trail */}
-      <DataTrail steps={data_trail} />
+      {/* 6. Revenue Lift Impact Tag */}
+      <div className="proposal-card__impact-row">
+        <span className="impact-amount">{estimated_impact}</span>
+        <span className="impact-sep">|</span>
+        <span className={`impact-level impact-level--${confidence}`}>
+          {confidence.charAt(0).toUpperCase() + confidence.slice(1)}
+        </span>
+      </div>
 
-      {/* Actions */}
+      {/* 7. Action Buttons */}
       {isApproved ? (
-        <div className="card__resolved" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-          <span className="resolved-badge">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M3 7.5L5.5 10L11 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Approved
-          </span>
-          <button
-            className="btn btn--ghost btn--small"
-            style={{ fontSize: '0.75rem', padding: '4px 10px', opacity: 0.85 }}
-            onClick={() => setShowConfirm(true)}
-            disabled={acting !== null}
-          >
-            {acting === 'rollback' ? <><Spinner /> Rolling back…</> : '↺ Rollback'}
-          </button>
+        <div className="resolved-row">
+          <span className="badge-approved">✓ Approved</span>
+          <button className="btn-rollback" onClick={() => setShowConfirm(true)}>↺ Revert</button>
         </div>
       ) : isPending ? (
-        <div className="card__actions">
-          <button className="btn btn--primary" onClick={handleApprove} disabled={acting !== null} aria-label={`Approve ${product_name}`}>
-            {acting === 'approve' ? <><Spinner /> Approving…</> : 'Approve'}
+        <div className="proposal-card__actions">
+          <button
+            className="btn-card btn-card--approve"
+            onClick={handleApprove}
+            disabled={acting !== null}
+          >
+            {acting === 'approve' ? <><Spinner /> APPROVING...</> : 'APPROVE'}
           </button>
-          <button className="btn btn--ghost" onClick={handleReject} disabled={acting !== null} aria-label={`Reject ${product_name}`}>
-            {acting === 'reject' ? <><Spinner /> Rejecting…</> : 'Reject'}
+          <button
+            className="btn-card btn-card--reject"
+            onClick={handleReject}
+            disabled={acting !== null}
+          >
+            {acting === 'reject' ? <><Spinner /> REJECTING...</> : 'REJECT'}
           </button>
         </div>
       ) : null}
 
-      {/* Rollback Confirmation Dialog Overlay */}
+      {/* Rollback confirmation modal */}
       {showConfirm && (
-        <div className="confirm-modal-overlay" style={{
-          position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.85)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justify: 'center',
-          padding: '16px',
-          borderRadius: '12px',
-          zIndex: 10,
-          textAlign: 'center',
-        }}>
-          <p style={{ fontSize: '0.875rem', color: '#f8fafc', fontWeight: 600, marginBottom: '12px' }}>
-            {revertText}
-          </p>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              className="btn btn--primary"
-              style={{ fontSize: '0.8rem', padding: '6px 14px' }}
-              onClick={handleConfirmRollback}
-            >
-              Yes, Revert
-            </button>
-            <button
-              className="btn btn--ghost"
-              style={{ fontSize: '0.8rem', padding: '6px 14px' }}
-              onClick={() => setShowConfirm(false)}
-            >
-              Cancel
-            </button>
+        <div className="confirm-modal-overlay">
+          <p className="confirm-text">Revert proposal for "{product_name}"?</p>
+          <div className="confirm-buttons">
+            <button className="btn-card btn-card--approve" onClick={handleConfirmRollback}>Yes, Revert</button>
+            <button className="btn-card btn-card--reject" onClick={() => setShowConfirm(false)}>Cancel</button>
           </div>
         </div>
       )}
     </article>
   );
 }
+

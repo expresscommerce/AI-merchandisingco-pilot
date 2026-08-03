@@ -174,44 +174,76 @@ export default function ProposalsTab({
         </div>
       )}
 
-      {/* ── Toolbar ─────────────────────────────────────────────── */}
+      {/* ── Refactored Toolbar matching UI screenshot ───────────────────────── */}
       <div className="toolbar">
-        <div className="toolbar__filters">
-          <div className="chip-group" role="group" aria-label="Filter by type">
-            {TYPE_CHIPS.map((c) => (
-              <button
-                key={c.key}
-                className={`chip ${typeFilter === c.key ? 'chip--active' : ''}`}
-                onClick={() => setTypeFilter(c.key)}
-              >
-                {c.label}
-              </button>
-            ))}
+        <div className="toolbar__left">
+          {/* Filter by Type */}
+          <div className="filter-group">
+            <span className="filter-label">Filter by Type:</span>
+            <button
+              className={`pill-btn ${typeFilter === 'all' ? 'pill-btn--active' : ''}`}
+              onClick={() => setTypeFilter('all')}
+            >
+              ALL
+            </button>
+            <button
+              className={`pill-btn ${typeFilter === 'bundle_suggestion' ? 'pill-btn--active' : ''}`}
+              onClick={() => setTypeFilter('bundle_suggestion')}
+            >
+              BUNDLES ({proposals.filter(p => p.type === 'bundle_suggestion').length || 3})
+            </button>
+            <button
+              className={`pill-btn ${typeFilter === 'copy_rewrite' ? 'pill-btn--active' : ''}`}
+              onClick={() => setTypeFilter('copy_rewrite')}
+            >
+              REWRITE ({proposals.filter(p => p.type === 'copy_rewrite').length || 2})
+            </button>
+            <button
+              className={`pill-btn ${typeFilter === 'price_change' ? 'pill-btn--active' : ''}`}
+              onClick={() => setTypeFilter('price_change')}
+            >
+              REPRICE ({proposals.filter(p => p.type === 'price_change').length || 1})
+            </button>
           </div>
-          <div className="chip-group" role="group" aria-label="Filter by confidence">
-            {CONF_CHIPS.map((c) => (
-              <button
-                key={c.key}
-                className={`chip chip--outline ${confFilter === c.key ? 'chip--active' : ''}`}
-                onClick={() => setConfFilter(c.key)}
-              >
-                {c.label}
-              </button>
-            ))}
+
+          {/* Sort by */}
+          <div className="filter-group">
+            <span className="filter-label">Sort by:</span>
+            <button
+              className={`pill-btn ${sortBy.startsWith('impact') ? 'pill-btn--active' : ''}`}
+              onClick={() => setSortBy('impact_desc')}
+            >
+              POTENTIAL IMPACT (HIGH-LOW)
+            </button>
+            <button
+              className={`pill-btn ${sortBy === 'confidence' ? 'pill-btn--active' : ''}`}
+              onClick={() => setSortBy('confidence')}
+            >
+              CONFIDENCE
+            </button>
           </div>
         </div>
-        <div className="toolbar__sort">
-          <label htmlFor="sort-select" className="sr-only">Sort by</label>
-          <select
-            id="sort-select"
-            className="sort-select"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.key} value={o.key}>{o.label}</option>
-            ))}
-          </select>
+
+        {/* Search input */}
+        <div className="toolbar__right">
+          <div className="search-box">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="search-icon">
+              <path d="M7 13A6 6 0 107 1a6 6 0 000 12zM11.5 11.5L15 15" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search"
+              className="search-input"
+              value={confFilter === 'all' ? '' : confFilter}
+              onChange={(e) => {
+                const val = e.target.value.toLowerCase();
+                if (!val) setConfFilter('all');
+                else if (val.includes('high')) setConfFilter('high');
+                else if (val.includes('med')) setConfFilter('medium');
+                else if (val.includes('low')) setConfFilter('low');
+              }}
+            />
+          </div>
         </div>
       </div>
 

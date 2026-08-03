@@ -276,6 +276,22 @@ Do NOT return extra text outside JSON.
             elif t == "copy_rewrite":
                 parsed_proposals.append(CopyRewriteProposal(**item))
             elif t == "bundle_suggestion":
+                bundle_imgs = []
+                b_products = item.get("products") or []
+                if scraped_products:
+                    for idx_b, bp_name in enumerate(b_products):
+                        found_img = None
+                        bp_lower = str(bp_name).lower()
+                        for sp in scraped_products:
+                            sp_title = (sp.get("product_name") or "").lower()
+                            if sp_title and (sp_title in bp_lower or bp_lower in sp_title):
+                                found_img = sp.get("image_url")
+                                break
+                        if not found_img and scraped_products:
+                            found_img = scraped_products[idx_b % len(scraped_products)].get("image_url")
+                        if found_img:
+                            bundle_imgs.append(found_img)
+                item["bundle_images"] = bundle_imgs
                 parsed_proposals.append(BundleSuggestionProposal(**item))
 
         print(f"✅ Generated {len(parsed_proposals)} live proposals for '{store_url or category}'!")

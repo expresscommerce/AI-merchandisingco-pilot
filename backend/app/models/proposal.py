@@ -70,6 +70,7 @@ class BundleSuggestionProposal(ProposalBase):
 
     type: Literal["bundle_suggestion"] = "bundle_suggestion"
     products: list[str]
+    bundle_images: list[str] = Field(default_factory=list)
     discount_percent: float
     # Percentage of orders containing any one product that also contain another
     co_purchase_pct: float = 0.0
